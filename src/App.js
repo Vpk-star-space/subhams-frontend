@@ -42,13 +42,11 @@ function App() {
 
   const formRef = useRef(null);
 
-  // ================= 🚀 SILENT TOKEN REFRESH LOGIC =================
   const refreshAuthToken = useCallback(async () => {
     if (!refreshToken || refreshToken === "null") return logout();
     try {
       const res = await fetch(`${API}/auth/refresh-token`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: refreshToken })
       });
       const data = await res.json();
@@ -56,17 +54,10 @@ function App() {
         localStorage.setItem("token", data.accessToken);
         setToken(data.accessToken);
         return data.accessToken;
-      } else {
-        logout();
-        return null;
-      }
-    } catch (err) {
-      logout();
-      return null;
-    }
+      } else { logout(); return null; }
+    } catch (err) { logout(); return null; }
   }, [refreshToken]);
 
-  // ================= AUTHENTICATION LOGIC =================
   const login = async () => {
     if (!username || !password) return alert("Enter username and password");
     setIsServerWaking(true); 
@@ -160,9 +151,7 @@ function App() {
 
       if (tRes.status === 401 || tRes.status === 403) { 
         const newToken = await refreshAuthToken();
-        if (newToken) {
-            fetchAllData(); 
-        }
+        if (newToken) fetchAllData(); 
         return; 
       }
 
@@ -182,56 +171,29 @@ function App() {
   useEffect(() => {
     if (!token || token === "null") return;
     const interval = setInterval(() => {
-      fetch(`${API}/transactions/summary`, { 
-        headers: { Authorization: `Bearer ${token}` } 
-      }).catch(err => console.log("Heartbeat paused."));
+      fetch(`${API}/transactions/summary`, { headers: { Authorization: `Bearer ${token}` } }).catch(err => console.log("Heartbeat paused."));
     }, 120000); 
-
     return () => clearInterval(interval);
   }, [token]);
 
   const downloadWhitePaper = () => {
     if (transactions.length === 0) return alert("No transactions to download!");
-    
     const doc = new jsPDF();
     const now = new Date();
-    
-    doc.setFontSize(24);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(245, 158, 11); 
+    doc.setFontSize(24); doc.setFont("helvetica", "bold"); doc.setTextColor(245, 158, 11); 
     doc.text("SUBHAMS PMMS", 14, 22);
-    
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 116, 139); 
+    doc.setFontSize(11); doc.setFont("helvetica", "normal"); doc.setTextColor(100, 116, 139); 
     doc.text("Official Financial White Paper Report", 14, 30);
-    doc.text(`Generated on: ${now.toLocaleDateString()} at ${now.toLocaleTimeString()}`, 14, 36);
-
-    doc.setDrawColor(226, 232, 240);
-    doc.setFillColor(248, 250, 252);
-    doc.rect(14, 45, 182, 25, 'FD'); 
-    
-    doc.setFontSize(12);
-    doc.setTextColor(15, 23, 42);
-    doc.text(`Global Income: Rs. ${income}`, 20, 60);
-    doc.text(`Global Expense: Rs. ${expense}`, 80, 60);
-    
-    if (balance >= 0) doc.setTextColor(16, 185, 129); 
-    else doc.setTextColor(239, 68, 68); 
+    doc.text(`Generated on: ${now.toLocaleDateString()}`, 14, 36);
+    doc.setDrawColor(226, 232, 240); doc.setFillColor(248, 250, 252); doc.rect(14, 45, 182, 25, 'FD'); 
+    doc.setFontSize(12); doc.setTextColor(15, 23, 42);
+    doc.text(`Global Income: Rs. ${income}`, 20, 60); doc.text(`Global Expense: Rs. ${expense}`, 80, 60);
+    if (balance >= 0) doc.setTextColor(16, 185, 129); else doc.setTextColor(239, 68, 68); 
     doc.text(`Global Balance: Rs. ${balance}`, 140, 60);
-
     const tableColumn = ["Date", "Title", "Category", "Type", "Amount (Rs)"];
-    const tableRows = transactions.map(t => [
-      new Date(t.date).toLocaleDateString(), t.title, t.category || "Other", t.type.toUpperCase(), t.amount
-    ]);
-
-    autoTable(doc, {
-      head: [tableColumn], body: tableRows, startY: 80, theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [241, 245, 249] }, styles: { fontSize: 10 }
-    });
-
-    doc.save(`Subhams_WhitePaper_${now.toLocaleDateString().replace(/\//g, "-")}.pdf`);
+    const tableRows = transactions.map(t => [new Date(t.date).toLocaleDateString(), t.title, t.category || "Other", t.type.toUpperCase(), t.amount]);
+    autoTable(doc, { head: [tableColumn], body: tableRows, startY: 80, theme: 'grid' });
+    doc.save(`Subhams_Report.pdf`);
   };
 
   const handleSubmit = async (type) => {
@@ -244,8 +206,7 @@ function App() {
         body: JSON.stringify({ title, amount: Number(amount), type, category, date }) 
       });
       if (res.ok) { 
-        setTitle(""); setAmount(""); setEditingId(null); setCategory("Other"); 
-        setDate(new Date().toISOString().split('T')[0]); fetchAllData(); 
+        setTitle(""); setAmount(""); setEditingId(null); setCategory("Other"); setDate(new Date().toISOString().split('T')[0]); fetchAllData(); 
       } else { 
         const errData = await res.json(); alert("Error: " + errData.message); 
       }
@@ -270,19 +231,14 @@ function App() {
 
   const applyFilters = async () => {
     try {
-      const query = new URLSearchParams({ 
-        type: filterType, category: filterCategory, search: searchQuery, startDate: filterStartDate, endDate: filterEndDate 
-      }).toString();
+      const query = new URLSearchParams({ type: filterType, category: filterCategory, search: searchQuery, startDate: filterStartDate, endDate: filterEndDate }).toString();
       const res = await fetch(`${API}/transactions/filter?${query}`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json(); 
       if (Array.isArray(data)) setTransactions(data); 
     } catch (err) { console.error("Search failed:", err); }
   };
 
-  const clearFilters = () => { 
-    setFilterType("All"); setFilterCategory("All"); setSearchQuery(""); setFilterStartDate(""); setFilterEndDate(""); 
-    fetchAllData(); 
-  };
+  const clearFilters = () => { setFilterType("All"); setFilterCategory("All"); setSearchQuery(""); setFilterStartDate(""); setFilterEndDate(""); fetchAllData(); };
 
   const calculateInterest = async () => {
     try {
@@ -300,45 +256,35 @@ function App() {
   if (income > 0 || expense > 0) {
     const topDrain = insights?.topCategory || "Other";
     const topAmount = insights?.amount || 0;
-
     if (income > 0 && expense === 0) { 
-      smartMsg = `100% of income (₹${income}) has been saved.`; 
-      smartMsgTe = `100% ఆదాయం (₹${income}) ఆదా చేయబడింది.`; 
-      insightClass = "insight-green"; 
-    } 
-    else if (expense > income && income > 0) { 
+      smartMsg = `100% of income (₹${income}) has been saved.`; smartMsgTe = `100% ఆదాయం (₹${income}) ఆదా చేయబడింది.`; insightClass = "insight-green"; 
+    } else if (expense > income && income > 0) { 
       const spendPercent = Math.round((expense / income) * 100);
       smartMsg = `Total expenses equal ${spendPercent}% of income. Deficit: ₹${expense - income}. Highest drain: ${topDrain} (₹${topAmount}).`; 
-      smartMsgTe = `ఖర్చులు ఆదాయంలో ${spendPercent}%. లోటు: ₹${expense - income}. అత్యధిక ఖర్చు: ${topDrain} (₹${topAmount}).`; 
-      insightClass = "insight-red"; 
-    } 
-    else if (expense > 0 && income === 0) { 
-      smartMsg = `Logged ₹${expense} in expenses with no income recorded.`; 
-      smartMsgTe = `₹${expense} ఖర్చు నమోదు చేయబడింది, కానీ ఆదాయం లేదు.`; 
-      insightClass = "insight-red"; 
-    } 
-    else { 
-      const spendPercent = Math.round((expense / income) * 100);
-      const savePercent = 100 - spendPercent;
+      smartMsgTe = `ఖర్చులు ఆదాయంలో ${spendPercent}%. లోటు: ₹${expense - income}. అత్యధిక ఖర్చు: ${topDrain} (₹${topAmount}).`; insightClass = "insight-red"; 
+    } else if (expense > 0 && income === 0) { 
+      smartMsg = `Logged ₹${expense} in expenses with no income recorded.`; smartMsgTe = `₹${expense} ఖర్చు నమోదు చేయబడింది, కానీ ఆదాయం లేదు.`; insightClass = "insight-red"; 
+    } else { 
+      const spendPercent = Math.round((expense / income) * 100); const savePercent = 100 - spendPercent;
       smartMsg = `Saved ${savePercent}% | Spent ${spendPercent}%. Highest drain: ${topDrain} (₹${topAmount}).`; 
       smartMsgTe = `${savePercent}% ఆదా చేశారు | ${spendPercent}% ఖర్చు చేశారు. అత్యధిక ఖర్చు: ${topDrain} (₹${topAmount}).`; 
-      if (spendPercent <= 30) insightClass = "insight-green"; 
-      else if (spendPercent >= 75) insightClass = "insight-red"; 
-      else insightClass = "insight-blue"; 
+      if (spendPercent <= 30) insightClass = "insight-green"; else if (spendPercent >= 75) insightClass = "insight-red"; else insightClass = "insight-blue"; 
     }
   }
 
-  // ================= 📱 MOBILE UPDATED CSS =================
+  // ================= 📱 THE FINAL CSS FIXES =================
   const globalStyles = `
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background-color: #f1f5f9; margin: 0; color: #334155; }
     .nav-bar { background: #0f172a; color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; }
-    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-    .card { background: white; border-radius: 16px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 15px; }
+    .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; margin-bottom: 20px; }
     
-    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 25px; }
-    @media (max-width: 480px) { .dashboard-grid { grid-template-columns: 1fr; } }
-
+    /* 1. FORCE LOGIN BOX TO CENTER AND BE WIDE */
+    .login-wrapper { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background-color: #f1f5f9; }
+    .login-box { width: 100%; max-width: 400px; padding: 30px 20px; background: white; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; }
+    
+    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 20px; }
     .action-grid { display: grid; grid-template-columns: 35% 65%; gap: 20px; }
     @media (max-width: 900px) { .action-grid { grid-template-columns: 1fr; } }
     
@@ -347,31 +293,28 @@ function App() {
     .metric-value { font-size: 2rem; font-weight: 800; margin: 10px 0 0 0; }
     
     .form-group { display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px; }
-    .input-clean { padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; width: 100%; outline: none; }
+    
+    /* Bigger inputs for mobile */
+    .input-clean { padding: 14px 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; width: 100%; outline: none; background: white; }
     .input-clean:focus { border-color: #3b82f6; }
     
-    .btn { padding: 12px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: 0.2s; }
-    @media (max-width: 600px) { .btn { width: 100%; } }
-    
+    .btn { padding: 14px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 16px; transition: 0.2s; display: flex; justify-content: center; align-items: center; }
     .btn:hover { opacity: 0.9; }
     .btn-green { background: #10b981; color: white; }
     .btn-red { background: #ef4444; color: white; }
     .btn-blue { background: #3b82f6; color: white; }
-    .btn-dark { background: #1e293b; color: white; border: 1px solid #334155; }
+    .btn-dark { background: #1e293b; color: white; }
     
-    /* NEW MOBILE LAYOUT FIXES FOR LOGIN AND FILTERS */
-    .login-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: #f1f5f9; }
-    .login-box { width: 100%; max-width: 450px; text-align: center; margin: 0; padding: 30px 20px; }
-
-    .history-header { display: flex; flex-direction: column; gap: 15px; margin-bottom: 15px; }
-    .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-    .filter-full-width { grid-column: 1 / -1; }
-
+    /* 2. FORCE HISTORY FILTERS TO STACK SO DATES DON'T SQUISH */
+    .filter-container { display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px; }
+    .date-row { display: flex; gap: 10px; }
+    @media (max-width: 400px) { .date-row { flex-direction: column; } } /* Stacks dates on tiny phones */
+    
     .history-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #f1f5f9; }
     .insight-green { background: #f0fdf4; border-left: 5px solid #10b981; color: #065f46; }
     .insight-red { background: #fef2f2; border-left: 5px solid #ef4444; color: #991b1b; }
     .insight-blue { background: #eff6ff; border-left: 5px solid #3b82f6; color: #1e40af; }
-
+    
     .spinner { width: 50px; height: 50px; border: 5px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
     .marquee-container { background-color: #1e293b; color: #fbbf24; padding: 10px; overflow: hidden; white-space: nowrap; }
     .marquee-text { display: inline-block; animation: scrollLeft 30s linear infinite; font-weight: 500; letter-spacing: 0.5px; }
@@ -388,18 +331,19 @@ function App() {
   if (isServerWaking) return (
     <div className="login-wrapper">
       <style>{globalStyles}</style>
-      <div className="login-box card">
-        <h1 className="brand-logo" style={{ marginBottom: "30px", fontSize: "3rem" }}>SUBHAMS</h1>
+      <div className="login-box">
+        <h1 className="brand-logo" style={{ marginBottom: "30px" }}>SUBHAMS</h1>
         <div className="spinner"></div>
-        <h2 style={{marginTop: "20px", color: "#64748b"}}>Communicating with Server...</h2>
+        <h2 style={{marginTop: "20px", color: "#64748b"}}>Communicating...</h2>
       </div>
     </div>
   );
 
+  // 🟢 LOGIN PAGE STRUCTURE (Wrapped to Center!)
   if (!token) return (
     <div className="login-wrapper">
       <style>{globalStyles}</style>
-      <div className="login-box card">
+      <div className="login-box">
         <h1 className="brand-logo" style={{ marginBottom: "10px" }}>SUBHAMS</h1>
         <p style={{ color: "#64748b", marginBottom: "25px", fontWeight: "bold" }}>PMMS</p>
         
@@ -476,7 +420,7 @@ function App() {
         </div>
 
         {smartMsg && (
-          <div className={`card ${insightClass}`} style={{ marginBottom: "25px", padding: "15px 25px" }}>
+          <div className={`card ${insightClass}`}>
             <h4 style={{ margin: "0 0 8px 0" }}>💡 Subhams Insights:</h4>
             <div style={{ lineHeight: "1.5" }}>
               {smartMsg} <br />
@@ -487,7 +431,7 @@ function App() {
 
         <div className="action-grid">
           
-          <div className="card" ref={formRef} style={{ alignSelf: "start" }}>
+          <div className="card" ref={formRef} style={{ alignSelf: "start", marginBottom: 0 }}>
             <h3 style={{ marginTop: 0 }}>{editingId ? "✏️ Edit" : "➕ Add Money"}</h3>
             <div className="form-group">
               <input className="input-clean" placeholder="Title (e.g., Rent)" value={title} onChange={e => setTitle(e.target.value)} />
@@ -497,7 +441,7 @@ function App() {
               </select>
               <input className="input-clean" type="date" value={date} onChange={e => setDate(e.target.value)} />
             </div>
-            <div style={{ display: "flex", gap: "10px", marginTop: "20px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
               <button className="btn btn-green" style={{ flex: 1 }} onClick={() => handleSubmit("income")}>+ Income</button>
               <button className="btn btn-red" style={{ flex: 1 }} onClick={() => handleSubmit("expense")}>- Expense</button>
             </div>
@@ -506,38 +450,38 @@ function App() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             
-            <div className="card" style={{ maxHeight: "600px", overflowY: "hidden", display: "flex", flexDirection: "column" }}>
-              <div className="history-header">
-                <h3 style={{ margin: 0 }}>📜 History</h3>
+            <div className="card" style={{ maxHeight: "600px", overflowY: "hidden", display: "flex", flexDirection: "column", marginBottom: 0 }}>
+              <h3 style={{ margin: "0 0 15px 0" }}>📜 History</h3>
+              
+              {/* 🟢 HISTORY FILTERS STRUCTURE (Stacked so dates don't squish!) */}
+              <div className="filter-container">
+                <input className="input-clean" placeholder="Search Title or Amount..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                <select className="input-clean" value={filterType} onChange={e => setFilterType(e.target.value)}>
+                  <option value="All">All Types</option><option value="income">Income</option><option value="expense">Expense</option>
+                </select>
                 
-                <div className="filter-grid">
-                  <input className="input-clean filter-full-width" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-                  <select className="input-clean filter-full-width" value={filterType} onChange={e => setFilterType(e.target.value)}>
-                    <option value="All">All Types</option><option value="income">Income</option><option value="expense">Expense</option>
-                  </select>
-                  
-                  <div>
-                    <div style={{fontSize:"0.75rem", color:"#64748b", marginBottom:"4px"}}>From Date:</div>
+                <div className="date-row">
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: "0.85rem", color: "#64748b", marginBottom: "4px" }}>From Date:</div>
                     <input className="input-clean" type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
                   </div>
-                  
-                  <div>
-                    <div style={{fontSize:"0.75rem", color:"#64748b", marginBottom:"4px"}}>To Date:</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: "0.85rem", color: "#64748b", marginBottom: "4px" }}>To Date:</div>
                     <input className="input-clean" type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
                   </div>
                 </div>
 
                 <div style={{ display: "flex", gap: "10px" }}>
                   <button className="btn btn-blue" style={{ flex: 1 }} onClick={applyFilters}>Filter</button>
-                  <button className="btn" style={{ flex: 1, background: "#e2e8f0" }} onClick={clearFilters}>Clear</button>
+                  <button className="btn btn-dark" style={{ flex: 1, background: "#e2e8f0", color: "#334155" }} onClick={clearFilters}>Clear</button>
                 </div>
               </div>
 
-              <div className="scrollable-history" style={{ flex: 1, overflowY: "auto", paddingRight: "5px" }}>
-                {transactions.length === 0 && <p style={{ color: "#94a3b8" }}>No records found.</p>}
+              <div className="scrollable-history" style={{ flex: 1, overflowY: "auto", paddingRight: "5px", marginTop: "10px" }}>
+                {transactions.length === 0 && <p style={{ color: "#94a3b8", textAlign: "center" }}>No records found.</p>}
                 {transactions.map((t) => (
                   <div key={t._id} className="history-item">
-                    <div style={{ flex: 1 }}>
+                    <div>
                       <b style={{ color: t.type === "income" ? "#10b981" : "#ef4444", fontSize: "1.1rem" }}>
                         {t.type === "income" ? "+" : "-"} ₹{t.amount}
                       </b>
@@ -546,7 +490,7 @@ function App() {
                       </div>
                       <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "4px" }}>{new Date(t.date).toLocaleDateString()}</div>
                     </div>
-                    <div style={{ display: "flex", gap: "15px", marginLeft: "10px" }}>
+                    <div style={{ display: "flex", gap: "15px" }}>
                       <span style={{ cursor: "pointer", color: "#3b82f6", fontWeight: "bold" }} onClick={() => handleEdit(t)}>Edit</span>
                       <span style={{ cursor: "pointer", color: "#ef4444", fontWeight: "bold" }} onClick={() => deleteTransaction(t._id)}>Del</span>
                     </div>
@@ -571,30 +515,26 @@ function App() {
         <div className="action-grid" style={{ marginTop: "20px" }}>
           <div className="card">
             <h3 style={{ textAlign: "center", marginTop: 0 }}>📊 Overview</h3>
-            <div style={{ height: "220px" }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart><Pie data={pieData} innerRadius={50} outerRadius={70} dataKey="value"><Cell fill="#10b981" /><Cell fill="#ef4444" /></Pie><Tooltip /><Legend /></PieChart>
-              </ResponsiveContainer>
-            </div>
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart><Pie data={pieData} innerRadius={50} outerRadius={70} dataKey="value"><Cell fill="#10b981" /><Cell fill="#ef4444" /></Pie><Tooltip /><Legend /></PieChart>
+            </ResponsiveContainer>
           </div>
           <div className="card">
             <h3 style={{ textAlign: "center", marginTop: 0 }}>📈 Monthly Trends</h3>
-            <div style={{ height: "220px" }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyChartData}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="income" fill="#10b981" /><Bar dataKey="expense" fill="#ef4444" /></BarChart>
-              </ResponsiveContainer>
-            </div>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={monthlyChartData}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="income" fill="#10b981" /><Bar dataKey="expense" fill="#ef4444" /></BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
         <div className="card" style={{ marginTop: "20px" }}>
           <h3 style={{ marginTop: 0 }}>🧮 Simple Interest Calculator</h3>
-          <div className="dashboard-grid" style={{ marginBottom: 0 }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
             <input className="input-clean" placeholder="Principal (₹)" onChange={(e) => setInterestData({...interestData, principal: e.target.value})} />
             <input className="input-clean" placeholder="Rate (%)" onChange={(e) => setInterestData({...interestData, rate: e.target.value})} />
             <input className="input-clean" placeholder="Time (Months)" onChange={(e) => setInterestData({...interestData, time: e.target.value})} />
           </div>
-          <button className="btn btn-blue" style={{ marginTop: "15px" }} onClick={calculateInterest}>Calculate</button>
+          <button className="btn btn-blue" style={{ marginTop: "15px", width: "100%" }} onClick={calculateInterest}>Calculate</button>
           
           {interestResult.interest !== undefined && (
             <div className="insight-green" style={{ marginTop: "20px", padding: "15px", borderRadius: "8px" }}>
