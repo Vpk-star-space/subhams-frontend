@@ -4,7 +4,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-const API = process.env.REACT_APP_BACKEND_URL || "https://subhams-backend.onrender.com/api";
+const API =  "https://subhams-backend.onrender.com/api";
 
 function App() {
   const [isMaintenanceMode] = useState(false);
