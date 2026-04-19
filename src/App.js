@@ -359,17 +359,18 @@ function App() {
     .btn-blue { background: #3b82f6; color: white; }
     .btn-dark { background: #1e293b; color: white; border: 1px solid #334155; }
     
+    /* NEW MOBILE LAYOUT FIXES FOR LOGIN AND FILTERS */
+    .login-wrapper { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background: #f1f5f9; }
+    .login-box { width: 100%; max-width: 450px; text-align: center; margin: 0; padding: 30px 20px; }
+
     .history-header { display: flex; flex-direction: column; gap: 15px; margin-bottom: 15px; }
-    .filter-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-    .filter-row .input-clean { flex: 1 1 140px; min-width: 120px; }
+    .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .filter-full-width { grid-column: 1 / -1; }
 
     .history-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #f1f5f9; }
     .insight-green { background: #f0fdf4; border-left: 5px solid #10b981; color: #065f46; }
     .insight-red { background: #fef2f2; border-left: 5px solid #ef4444; color: #991b1b; }
     .insight-blue { background: #eff6ff; border-left: 5px solid #3b82f6; color: #1e40af; }
-    
-    .login-box { max-width: 450px; margin: 30px auto; text-align: center; padding: 30px 15px; }
-    @media (max-width: 500px) { .login-box { margin: 10px auto; } }
 
     .spinner { width: 50px; height: 50px; border: 5px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
     .marquee-container { background-color: #1e293b; color: #fbbf24; padding: 10px; overflow: hidden; white-space: nowrap; }
@@ -383,17 +384,20 @@ function App() {
   `;
 
   if (isMaintenanceMode) return <div style={{textAlign: "center", padding: "100px"}}><h1>🛠️ Maintenance</h1></div>;
+  
   if (isServerWaking) return (
-    <div style={{ textAlign: "center", padding: "100px" }}>
+    <div className="login-wrapper">
       <style>{globalStyles}</style>
-      <h1 className="brand-logo" style={{ marginBottom: "30px", fontSize: "3rem" }}>SUBHAMS</h1>
-      <div className="spinner"></div>
-      <h2 style={{marginTop: "20px", color: "#64748b"}}>Communicating with Server...</h2>
+      <div className="login-box card">
+        <h1 className="brand-logo" style={{ marginBottom: "30px", fontSize: "3rem" }}>SUBHAMS</h1>
+        <div className="spinner"></div>
+        <h2 style={{marginTop: "20px", color: "#64748b"}}>Communicating with Server...</h2>
+      </div>
     </div>
   );
 
   if (!token) return (
-    <div>
+    <div className="login-wrapper">
       <style>{globalStyles}</style>
       <div className="login-box card">
         <h1 className="brand-logo" style={{ marginBottom: "10px" }}>SUBHAMS</h1>
@@ -506,17 +510,26 @@ function App() {
               <div className="history-header">
                 <h3 style={{ margin: 0 }}>📜 History</h3>
                 
-                <div className="filter-row">
-                  <input className="input-clean" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-                  <select className="input-clean" value={filterType} onChange={e => setFilterType(e.target.value)}>
+                <div className="filter-grid">
+                  <input className="input-clean filter-full-width" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                  <select className="input-clean filter-full-width" value={filterType} onChange={e => setFilterType(e.target.value)}>
                     <option value="All">All Types</option><option value="income">Income</option><option value="expense">Expense</option>
                   </select>
                   
-                  <input className="input-clean" type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
-                  <input className="input-clean" type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
+                  <div>
+                    <div style={{fontSize:"0.75rem", color:"#64748b", marginBottom:"4px"}}>From Date:</div>
+                    <input className="input-clean" type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
+                  </div>
+                  
+                  <div>
+                    <div style={{fontSize:"0.75rem", color:"#64748b", marginBottom:"4px"}}>To Date:</div>
+                    <input className="input-clean" type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
+                  </div>
+                </div>
 
-                  <button className="btn btn-blue" onClick={applyFilters}>Filter</button>
-                  <button className="btn" style={{ background: "#e2e8f0" }} onClick={clearFilters}>Clear</button>
+                <div style={{ display: "flex", gap: "10px" }}>
+                  <button className="btn btn-blue" style={{ flex: 1 }} onClick={applyFilters}>Filter</button>
+                  <button className="btn" style={{ flex: 1, background: "#e2e8f0" }} onClick={clearFilters}>Clear</button>
                 </div>
               </div>
 
@@ -603,6 +616,6 @@ function App() {
 
     </div>
   );
-} 
+}
 
 export default App;
