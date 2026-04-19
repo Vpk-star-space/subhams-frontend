@@ -468,7 +468,7 @@ function App() {
                       <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "bold", marginBottom: "4px" }}>To Date:</div>
                       <input className="input-clean" type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
                     </div>
-                  </div>
+                  </div> 
 
                   <div style={{ display: "flex", gap: "10px", marginTop: "5px" }}>
                     <button className="btn btn-blue" style={{ flex: 1 }} onClick={applyFilters}>Filter</button>
