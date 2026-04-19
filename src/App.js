@@ -327,62 +327,54 @@ function App() {
   `;
 
   if (isMaintenanceMode) return <div style={{textAlign: "center", padding: "100px"}}><h1>🛠️ Maintenance</h1></div>;
-  
   if (isServerWaking) return (
-    <div className="login-wrapper">
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", backgroundColor: "#f1f5f9", padding: "15px" }}>
       <style>{globalStyles}</style>
-      <div className="login-box">
+      <div style={{ width: "95%", maxWidth: "400px", textAlign: "center", padding: "30px", background: "white", borderRadius: "16px", border: "1px solid #e2e8f0" }}>
         <h1 className="brand-logo" style={{ marginBottom: "30px" }}>SUBHAMS</h1>
         <div className="spinner"></div>
-        <h2 style={{marginTop: "20px", color: "#64748b"}}>Communicating...</h2>
+        <h2 style={{marginTop: "20px", color: "#64748b", fontSize: "1.2rem"}}>Communicating...</h2>
       </div>
     </div>
   );
 
-  // 🟢 LOGIN PAGE WRAPPED IN .login-wrapper TO CENTER IT
   if (!token) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", backgroundColor: "#f1f5f9", padding: "15px" }}>
       <style>{globalStyles}</style>
-      <div className="login-box card" style={{ width: "100%", maxWidth: "400px", margin: "0 auto" }}>
+      <div className="card" style={{ width: "95%", maxWidth: "420px", textAlign: "center", padding: "35px 20px" }}>
         <h1 className="brand-logo" style={{ marginBottom: "10px" }}>SUBHAMS</h1>
         <p style={{ color: "#64748b", marginBottom: "25px", fontWeight: "bold" }}>PMMS</p>
         
         {authMode === "login" && (
-          <>
+          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             <div className="form-group">
               <input className="input-clean" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
               <input className="input-clean" type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
             </div>
-            <button className="btn btn-blue" style={{ width: "100%", marginBottom: "15px" }} onClick={login}>Login</button>
+            <button className="btn btn-blue" style={{ width: "100%" }} onClick={login}>Login</button>
             <p style={{ fontSize: "0.9rem" }}>Don't have an account? <span style={{ color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("register")}>Create one here</span></p>
-            <div style={{ margin: "25px 0", color: "#cbd5e1", fontSize: "0.9rem" }}>────── OR ──────</div>
+            <div style={{ margin: "15px 0", color: "#cbd5e1", fontSize: "0.9rem" }}>────── OR ──────</div>
             <div style={{ display: "flex", justifyContent: "center" }}><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => alert("Google Error")} /></div>
-          </>
+          </div>
         )}
 
         {authMode === "register" && (
-          <>
-            <h3 style={{ color: "#10b981", margin: "0 0 15px 0" }}>Create an Account</h3>
-            <div className="form-group">
-              <input className="input-clean" placeholder="Email Address" type="email" value={email} onChange={e => setEmail(e.target.value)} />
-              <input className="input-clean" placeholder="Choose a Username" value={username} onChange={e => setUsername(e.target.value)} />
-              <input className="input-clean" type="password" placeholder="Strong Password" value={password} onChange={e => setPassword(e.target.value)} />
-            </div>
-            <button className="btn btn-green" style={{ width: "100%", marginBottom: "15px" }} onClick={requestRegister}>Send OTP to Email</button>
-            <p style={{ fontSize: "0.9rem" }}>Already have an account? <span style={{ color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("login")}>Login instead</span></p>
-          </>
+          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+            <h3 style={{ color: "#10b981", margin: "0" }}>Create Account</h3>
+            <input className="input-clean" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
+            <input className="input-clean" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
+            <input className="input-clean" type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
+            <button className="btn btn-green" onClick={requestRegister}>Send OTP</button>
+            <p onClick={() => setAuthMode("login")}>Back to Login</p>
+          </div>
         )}
 
         {authMode === "otp" && (
-          <>
-            <h3 style={{ color: "#f59e0b", margin: "0 0 15px 0" }}>Enter OTP Code</h3>
-            <p style={{ fontSize: "0.9rem", color: "#64748b", marginBottom: "20px" }}>We sent a 6-digit code to <b>{email}</b></p>
-            <div className="form-group">
-              <input className="input-clean" placeholder="6-Digit OTP" type="text" value={otp} onChange={e => setOtp(e.target.value)} style={{ textAlign: "center", fontSize: "1.5rem", letterSpacing: "5px" }} />
-            </div>
-            <button className="btn btn-green" style={{ width: "100%", marginBottom: "15px" }} onClick={verifyOtpAndRegister}>Verify & Register</button>
-            <p style={{ fontSize: "0.9rem" }}><span style={{ color: "#ef4444", cursor: "pointer" }} onClick={() => setAuthMode("register")}>Cancel & Go Back</span></p>
-          </>
+          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+            <h3>Enter OTP Code</h3>
+            <input className="input-clean" placeholder="6-Digit OTP" value={otp} onChange={e => setOtp(e.target.value)} style={{textAlign:"center", fontSize:"24px"}} />
+            <button className="btn btn-green" onClick={verifyOtpAndRegister}>Verify & Register</button>
+          </div>
         )}
       </div>
     </div>
@@ -459,16 +451,28 @@ function App() {
                     <option value="All">All Types</option><option value="income">Income</option><option value="expense">Expense</option>
                   </select>
                   
-                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                    <div style={{ flex: "1 1 130px" }}>
-                      <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "bold", marginBottom: "4px" }}>From Date:</div>
-                      <input className="input-clean" type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
-                    </div>
-                    <div style={{ flex: "1 1 130px" }}>
-                      <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "bold", marginBottom: "4px" }}>To Date:</div>
-                      <input className="input-clean" type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
-                    </div>
-                  </div> 
+               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "15px" }}>
+    <div style={{ flex: "1 1 140px" }}>
+      <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "bold", marginBottom: "4px" }}>From Date:</div>
+      <input 
+        className="input-clean" 
+        type="date" 
+        value={filterStartDate} 
+        onChange={e => setFilterStartDate(e.target.value)} 
+        style={{ color: "black", background: "white", minHeight: "52px", display: "flex", alignItems: "center", WebkitAppearance: "listbox" }} 
+      />
+    </div>
+    <div style={{ flex: "1 1 140px" }}>
+      <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "bold", marginBottom: "4px" }}>To Date:</div>
+      <input 
+        className="input-clean" 
+        type="date" 
+        value={filterEndDate} 
+        onChange={e => setFilterEndDate(e.target.value)} 
+        style={{ color: "black", background: "white", minHeight: "52px", display: "flex", alignItems: "center", WebkitAppearance: "listbox" }} 
+      />
+    </div>
+  </div>
 
                   <div style={{ display: "flex", gap: "10px", marginTop: "5px" }}>
                     <button className="btn btn-blue" style={{ flex: 1 }} onClick={applyFilters}>Filter</button>
