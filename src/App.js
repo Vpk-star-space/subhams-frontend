@@ -341,9 +341,9 @@ function App() {
 
   // 🟢 LOGIN PAGE WRAPPED IN .login-wrapper TO CENTER IT
   if (!token) return (
-    <div className="login-wrapper">
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", backgroundColor: "#f1f5f9", padding: "15px" }}>
       <style>{globalStyles}</style>
-      <div className="login-box">
+      <div className="login-box card" style={{ width: "100%", maxWidth: "400px", margin: "0 auto" }}>
         <h1 className="brand-logo" style={{ marginBottom: "10px" }}>SUBHAMS</h1>
         <p style={{ color: "#64748b", marginBottom: "25px", fontWeight: "bold" }}>PMMS</p>
         
@@ -453,29 +453,28 @@ function App() {
             <div className="card" style={{ maxHeight: "600px", overflowY: "hidden", display: "flex", flexDirection: "column", marginBottom: 0 }}>
               <h3 style={{ margin: "0 0 15px 0" }}>📜 History</h3>
               
-              {/* 🟢 HISTORY FILTERS - Stacked with Labels */}
-              <div className="filter-container">
-                <input className="input-clean" placeholder="Search Title or Amount..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-                <select className="input-clean" value={filterType} onChange={e => setFilterType(e.target.value)}>
-                  <option value="All">All Types</option><option value="income">Income</option><option value="expense">Expense</option>
-                </select>
-                
-                <div className="date-row">
-                  <div>
-                    <div className="date-label">From Date:</div>
-                    <input className="input-clean" type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "15px" }}>
+                  <input className="input-clean" placeholder="Search Title or Amount..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                  <select className="input-clean" value={filterType} onChange={e => setFilterType(e.target.value)}>
+                    <option value="All">All Types</option><option value="income">Income</option><option value="expense">Expense</option>
+                  </select>
+                  
+                  <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                    <div style={{ flex: "1 1 130px" }}>
+                      <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "bold", marginBottom: "4px" }}>From Date:</div>
+                      <input className="input-clean" type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
+                    </div>
+                    <div style={{ flex: "1 1 130px" }}>
+                      <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "bold", marginBottom: "4px" }}>To Date:</div>
+                      <input className="input-clean" type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
+                    </div>
                   </div>
-                  <div>
-                    <div className="date-label">To Date:</div>
-                    <input className="input-clean" type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
-                  </div>
-                </div>
 
-                <div style={{ display: "flex", gap: "10px" }}>
-                  <button className="btn btn-blue" style={{ flex: 1 }} onClick={applyFilters}>Filter</button>
-                  <button className="btn btn-dark" style={{ flex: 1 }} onClick={clearFilters}>Clear</button>
+                  <div style={{ display: "flex", gap: "10px", marginTop: "5px" }}>
+                    <button className="btn btn-blue" style={{ flex: 1 }} onClick={applyFilters}>Filter</button>
+                    <button className="btn" style={{ flex: 1, background: "#e2e8f0", color: "#334155" }} onClick={clearFilters}>Clear</button>
+                  </div>
                 </div>
-              </div>
 
               <div className="scrollable-history" style={{ flex: 1, overflowY: "auto", paddingRight: "5px", marginTop: "10px" }}>
                 {transactions.length === 0 && <p style={{ color: "#94a3b8", textAlign: "center" }}>No records found.</p>}
