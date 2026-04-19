@@ -11,7 +11,6 @@ function App() {
   const [isServerWaking, setIsServerWaking] = useState(!!localStorage.getItem("token")); 
   const [authMode, setAuthMode] = useState("login"); 
   
-  // 🚀 FIXED: Now tracking both Access and Refresh tokens
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [refreshToken, setRefreshToken] = useState(localStorage.getItem("refreshToken"));
   
@@ -78,7 +77,6 @@ function App() {
       });
       const data = await res.json();
       if (res.ok && data.accessToken) { 
-        // 🚀 FIXED: Storing both tokens on login
         localStorage.setItem("token", data.accessToken); 
         localStorage.setItem("refreshToken", data.refreshToken);
         setToken(data.accessToken); 
@@ -97,7 +95,6 @@ function App() {
       });
       const data = await res.json();
       if (res.ok) {
-        // 🚀 FIXED: Storing both tokens on Google Login
         localStorage.setItem("token", data.accessToken);
         localStorage.setItem("refreshToken", data.refreshToken);
         setToken(data.accessToken);
@@ -143,7 +140,6 @@ function App() {
   };
 
   const logout = () => { 
-    // 🚀 FIXED: Clearing both tokens on logout
     localStorage.removeItem("token"); 
     localStorage.removeItem("refreshToken");
     setToken(null); 
@@ -152,7 +148,6 @@ function App() {
     setAuthMode("login");
   };
 
-  // ================= FETCH ALL DATA =================
   const fetchAllData = useCallback(async () => {
     if (!token || token === "null") { setIsServerWaking(false); return; }
     try {
@@ -163,11 +158,10 @@ function App() {
         fetch(`${API}/transactions/insights`, { headers })
       ]);
 
-      // 🚀 FIXED: If Access Token expired, try refreshing it once
       if (tRes.status === 401 || tRes.status === 403) { 
         const newToken = await refreshAuthToken();
         if (newToken) {
-            fetchAllData(); // Retry fetch with new token
+            fetchAllData(); 
         }
         return; 
       }
@@ -185,7 +179,6 @@ function App() {
 
   useEffect(() => { fetchAllData(); }, [fetchAllData]);
 
-  // ================= 🚀 SUBHAMS HEARTBEAT =================
   useEffect(() => {
     if (!token || token === "null") return;
     const interval = setInterval(() => {
@@ -197,8 +190,6 @@ function App() {
     return () => clearInterval(interval);
   }, [token]);
 
-
-  // ================= 🚀 SUBHAMS WHITE PAPER PDF DOWNLOAD =================
   const downloadWhitePaper = () => {
     if (transactions.length === 0) return alert("No transactions to download!");
     
@@ -243,7 +234,6 @@ function App() {
     doc.save(`Subhams_WhitePaper_${now.toLocaleDateString().replace(/\//g, "-")}.pdf`);
   };
 
-  // ================= TRANSACTIONS (ADD/EDIT/DELETE/SEARCH) =================
   const handleSubmit = async (type) => {
     if (!title || !amount) return alert("Enter title & amount");
     const url = editingId ? `${API}/transactions/${editingId}` : `${API}/transactions`;
@@ -301,7 +291,6 @@ function App() {
     } catch (err) { alert("Failed to calculate interest"); }
   };
 
-  // ================= MATH (Using allTransactions for Global view) =================
   const income = allTransactions.filter(t => t.type === "income").reduce((a, b) => a + Number(b.amount), 0);
   const expense = allTransactions.filter(t => t.type === "expense").reduce((a, b) => a + Number(b.amount), 0);
   const balance = income - expense;
@@ -331,43 +320,57 @@ function App() {
     else { 
       const spendPercent = Math.round((expense / income) * 100);
       const savePercent = 100 - spendPercent;
-      
       smartMsg = `Saved ${savePercent}% | Spent ${spendPercent}%. Highest drain: ${topDrain} (₹${topAmount}).`; 
       smartMsgTe = `${savePercent}% ఆదా చేశారు | ${spendPercent}% ఖర్చు చేశారు. అత్యధిక ఖర్చు: ${topDrain} (₹${topAmount}).`; 
-      
       if (spendPercent <= 30) insightClass = "insight-green"; 
       else if (spendPercent >= 75) insightClass = "insight-red"; 
       else insightClass = "insight-blue"; 
     }
   }
 
-  // ================= CSS STYLES (NO CHANGES) =================
+  // ================= 📱 MOBILE UPDATED CSS =================
   const globalStyles = `
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background-color: #f1f5f9; margin: 0; color: #334155; }
     .nav-bar { background: #0f172a; color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; }
     .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
     .card { background: white; border-radius: 16px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; }
-    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 25px; }
+    
+    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 25px; }
+    @media (max-width: 480px) { .dashboard-grid { grid-template-columns: 1fr; } }
+
     .action-grid { display: grid; grid-template-columns: 35% 65%; gap: 20px; }
     @media (max-width: 900px) { .action-grid { grid-template-columns: 1fr; } }
+    
     .metric-card { text-align: center; padding: 20px; border-radius: 12px; background: white; border: 1px solid #e2e8f0; }
     .metric-title { font-size: 0.85rem; color: #64748b; font-weight: bold; letter-spacing: 1px; }
     .metric-value { font-size: 2rem; font-weight: 800; margin: 10px 0 0 0; }
+    
     .form-group { display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px; }
     .input-clean { padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; width: 100%; outline: none; }
     .input-clean:focus { border-color: #3b82f6; }
+    
     .btn { padding: 12px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1rem; transition: 0.2s; }
+    @media (max-width: 600px) { .btn { width: 100%; } }
+    
     .btn:hover { opacity: 0.9; }
     .btn-green { background: #10b981; color: white; }
     .btn-red { background: #ef4444; color: white; }
     .btn-blue { background: #3b82f6; color: white; }
     .btn-dark { background: #1e293b; color: white; border: 1px solid #334155; }
+    
+    .history-header { display: flex; flex-direction: column; gap: 15px; margin-bottom: 15px; }
+    .filter-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .filter-row .input-clean { flex: 1 1 140px; min-width: 120px; }
+
     .history-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #f1f5f9; }
     .insight-green { background: #f0fdf4; border-left: 5px solid #10b981; color: #065f46; }
     .insight-red { background: #fef2f2; border-left: 5px solid #ef4444; color: #991b1b; }
     .insight-blue { background: #eff6ff; border-left: 5px solid #3b82f6; color: #1e40af; }
-    .login-box { max-width: 450px; margin: 50px auto; text-align: center; }
+    
+    .login-box { max-width: 450px; margin: 30px auto; text-align: center; padding: 30px 15px; }
+    @media (max-width: 500px) { .login-box { margin: 10px auto; } }
+
     .spinner { width: 50px; height: 50px; border: 5px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
     .marquee-container { background-color: #1e293b; color: #fbbf24; padding: 10px; overflow: hidden; white-space: nowrap; }
     .marquee-text { display: inline-block; animation: scrollLeft 30s linear infinite; font-weight: 500; letter-spacing: 0.5px; }
@@ -377,7 +380,6 @@ function App() {
     .scrollable-history::-webkit-scrollbar { width: 6px; }
     .scrollable-history::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
     .scrollable-history::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-    .scrollable-history::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
   `;
 
   if (isMaintenanceMode) return <div style={{textAlign: "center", padding: "100px"}}><h1>🛠️ Maintenance</h1></div>;
@@ -481,7 +483,7 @@ function App() {
 
         <div className="action-grid">
           
-          <div className="card" ref={formRef} style={{ alignSelf: "start", marginBottom: 0 }}>
+          <div className="card" ref={formRef} style={{ alignSelf: "start" }}>
             <h3 style={{ marginTop: 0 }}>{editingId ? "✏️ Edit" : "➕ Add Money"}</h3>
             <div className="form-group">
               <input className="input-clean" placeholder="Title (e.g., Rent)" value={title} onChange={e => setTitle(e.target.value)} />
@@ -491,7 +493,7 @@ function App() {
               </select>
               <input className="input-clean" type="date" value={date} onChange={e => setDate(e.target.value)} />
             </div>
-            <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+            <div style={{ display: "flex", gap: "10px", marginTop: "20px", flexWrap: "wrap" }}>
               <button className="btn btn-green" style={{ flex: 1 }} onClick={() => handleSubmit("income")}>+ Income</button>
               <button className="btn btn-red" style={{ flex: 1 }} onClick={() => handleSubmit("expense")}>- Expense</button>
             </div>
@@ -500,24 +502,21 @@ function App() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             
-            <div className="card" style={{ maxHeight: "600px", overflowY: "hidden", display: "flex", flexDirection: "column", marginBottom: 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px", flexWrap: "wrap", gap: "10px" }}>
+            <div className="card" style={{ maxHeight: "600px", overflowY: "hidden", display: "flex", flexDirection: "column" }}>
+              <div className="history-header">
                 <h3 style={{ margin: 0 }}>📜 History</h3>
                 
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", flex: 1, justifyContent: "flex-end", alignItems: "center" }}>
-                  <input className="input-clean" style={{ padding: "8px", fontSize: "0.85rem", width: "130px" }} placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-                  <select className="input-clean" style={{ padding: "8px", fontSize: "0.85rem", width: "auto" }} value={filterType} onChange={e => setFilterType(e.target.value)}>
+                <div className="filter-row">
+                  <input className="input-clean" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                  <select className="input-clean" value={filterType} onChange={e => setFilterType(e.target.value)}>
                     <option value="All">All Types</option><option value="income">Income</option><option value="expense">Expense</option>
                   </select>
                   
-                  <span style={{fontSize: "0.85rem", color: "#64748b"}}>From:</span>
-                  <input className="input-clean" type="date" style={{ padding: "8px", fontSize: "0.85rem", width: "auto" }} value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
-                  
-                  <span style={{fontSize: "0.85rem", color: "#64748b"}}>To:</span>
-                  <input className="input-clean" type="date" style={{ padding: "8px", fontSize: "0.85rem", width: "auto" }} value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
+                  <input className="input-clean" type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
+                  <input className="input-clean" type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
 
-                  <button className="btn btn-blue" style={{ padding: "8px 15px", fontSize: "0.85rem" }} onClick={applyFilters}>Filter</button>
-                  <button className="btn" style={{ padding: "8px 15px", fontSize: "0.85rem", background: "#e2e8f0" }} onClick={clearFilters}>Clear</button>
+                  <button className="btn btn-blue" onClick={applyFilters}>Filter</button>
+                  <button className="btn" style={{ background: "#e2e8f0" }} onClick={clearFilters}>Clear</button>
                 </div>
               </div>
 
@@ -525,7 +524,7 @@ function App() {
                 {transactions.length === 0 && <p style={{ color: "#94a3b8" }}>No records found.</p>}
                 {transactions.map((t) => (
                   <div key={t._id} className="history-item">
-                    <div>
+                    <div style={{ flex: 1 }}>
                       <b style={{ color: t.type === "income" ? "#10b981" : "#ef4444", fontSize: "1.1rem" }}>
                         {t.type === "income" ? "+" : "-"} ₹{t.amount}
                       </b>
@@ -534,7 +533,7 @@ function App() {
                       </div>
                       <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: "4px" }}>{new Date(t.date).toLocaleDateString()}</div>
                     </div>
-                    <div style={{ display: "flex", gap: "15px" }}>
+                    <div style={{ display: "flex", gap: "15px", marginLeft: "10px" }}>
                       <span style={{ cursor: "pointer", color: "#3b82f6", fontWeight: "bold" }} onClick={() => handleEdit(t)}>Edit</span>
                       <span style={{ cursor: "pointer", color: "#ef4444", fontWeight: "bold" }} onClick={() => deleteTransaction(t._id)}>Del</span>
                     </div>
@@ -544,7 +543,7 @@ function App() {
             </div>
 
             {transactions.length > 0 && (
-              <button className="btn btn-dark" onClick={downloadWhitePaper} style={{ width: "100%", padding: "15px", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+              <button className="btn btn-dark" onClick={downloadWhitePaper} style={{ padding: "15px", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', borderRadius: "12px" }}>
                 <span style={{ fontSize: "1.5rem" }}>📄</span>
                 <div style={{ textAlign: "left" }}>
                   <div style={{ fontWeight: "bold" }}>Download History Report</div>
@@ -559,15 +558,19 @@ function App() {
         <div className="action-grid" style={{ marginTop: "20px" }}>
           <div className="card">
             <h3 style={{ textAlign: "center", marginTop: 0 }}>📊 Overview</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart><Pie data={pieData} innerRadius={50} outerRadius={70} dataKey="value"><Cell fill="#10b981" /><Cell fill="#ef4444" /></Pie><Tooltip /><Legend /></PieChart>
-            </ResponsiveContainer>
+            <div style={{ height: "220px" }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart><Pie data={pieData} innerRadius={50} outerRadius={70} dataKey="value"><Cell fill="#10b981" /><Cell fill="#ef4444" /></Pie><Tooltip /><Legend /></PieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
           <div className="card">
             <h3 style={{ textAlign: "center", marginTop: 0 }}>📈 Monthly Trends</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={monthlyChartData}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="income" fill="#10b981" /><Bar dataKey="expense" fill="#ef4444" /></BarChart>
-            </ResponsiveContainer>
+            <div style={{ height: "220px" }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={monthlyChartData}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="income" fill="#10b981" /><Bar dataKey="expense" fill="#ef4444" /></BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
