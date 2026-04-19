@@ -280,7 +280,7 @@ function App() {
     .container { max-width: 1200px; margin: 0 auto; padding: 15px; }
     .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; margin-bottom: 20px; }
     
-    /* 1. FORCE LOGIN BOX TO CENTER AND BE WIDE */
+    /* 1. CENTER LOGIN WRAPPER */
     .login-wrapper { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background-color: #f1f5f9; }
     .login-box { width: 100%; max-width: 400px; padding: 30px 20px; background: white; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; }
     
@@ -294,7 +294,6 @@ function App() {
     
     .form-group { display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px; }
     
-    /* Bigger inputs for mobile */
     .input-clean { padding: 14px 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; width: 100%; outline: none; background: white; }
     .input-clean:focus { border-color: #3b82f6; }
     
@@ -305,10 +304,11 @@ function App() {
     .btn-blue { background: #3b82f6; color: white; }
     .btn-dark { background: #1e293b; color: white; }
     
-    /* 2. FORCE HISTORY FILTERS TO STACK SO DATES DON'T SQUISH */
+    /* 2. HISTORY FILTERS FIXED FOR MOBILE */
     .filter-container { display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px; }
-    .date-row { display: flex; gap: 10px; }
-    @media (max-width: 400px) { .date-row { flex-direction: column; } } /* Stacks dates on tiny phones */
+    .date-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .date-row > div { flex: 1; min-width: 130px; }
+    .date-label { font-size: 0.85rem; color: #64748b; margin-bottom: 5px; font-weight: bold; }
     
     .history-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #f1f5f9; }
     .insight-green { background: #f0fdf4; border-left: 5px solid #10b981; color: #065f46; }
@@ -339,7 +339,7 @@ function App() {
     </div>
   );
 
-  // 🟢 LOGIN PAGE STRUCTURE (Wrapped to Center!)
+  // 🟢 LOGIN PAGE WRAPPED IN .login-wrapper TO CENTER IT
   if (!token) return (
     <div className="login-wrapper">
       <style>{globalStyles}</style>
@@ -420,7 +420,7 @@ function App() {
         </div>
 
         {smartMsg && (
-          <div className={`card ${insightClass}`}>
+          <div className={`card ${insightClass}`} style={{ marginBottom: "25px", padding: "15px 25px" }}>
             <h4 style={{ margin: "0 0 8px 0" }}>💡 Subhams Insights:</h4>
             <div style={{ lineHeight: "1.5" }}>
               {smartMsg} <br />
@@ -445,7 +445,7 @@ function App() {
               <button className="btn btn-green" style={{ flex: 1 }} onClick={() => handleSubmit("income")}>+ Income</button>
               <button className="btn btn-red" style={{ flex: 1 }} onClick={() => handleSubmit("expense")}>- Expense</button>
             </div>
-            {editingId && <button className="btn" style={{ width: "100%", marginTop: "10px", background: "#e2e8f0" }} onClick={cancelEdit}>Cancel Edit</button>}
+            {editingId && <button className="btn" style={{ width: "100%", marginTop: "10px", background: "#e2e8f0", color: "#334155" }} onClick={cancelEdit}>Cancel Edit</button>}
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
@@ -453,7 +453,7 @@ function App() {
             <div className="card" style={{ maxHeight: "600px", overflowY: "hidden", display: "flex", flexDirection: "column", marginBottom: 0 }}>
               <h3 style={{ margin: "0 0 15px 0" }}>📜 History</h3>
               
-              {/* 🟢 HISTORY FILTERS STRUCTURE (Stacked so dates don't squish!) */}
+              {/* 🟢 HISTORY FILTERS - Stacked with Labels */}
               <div className="filter-container">
                 <input className="input-clean" placeholder="Search Title or Amount..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                 <select className="input-clean" value={filterType} onChange={e => setFilterType(e.target.value)}>
@@ -461,19 +461,19 @@ function App() {
                 </select>
                 
                 <div className="date-row">
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: "0.85rem", color: "#64748b", marginBottom: "4px" }}>From Date:</div>
+                  <div>
+                    <div className="date-label">From Date:</div>
                     <input className="input-clean" type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: "0.85rem", color: "#64748b", marginBottom: "4px" }}>To Date:</div>
+                  <div>
+                    <div className="date-label">To Date:</div>
                     <input className="input-clean" type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
                   </div>
                 </div>
 
                 <div style={{ display: "flex", gap: "10px" }}>
                   <button className="btn btn-blue" style={{ flex: 1 }} onClick={applyFilters}>Filter</button>
-                  <button className="btn btn-dark" style={{ flex: 1, background: "#e2e8f0", color: "#334155" }} onClick={clearFilters}>Clear</button>
+                  <button className="btn btn-dark" style={{ flex: 1 }} onClick={clearFilters}>Clear</button>
                 </div>
               </div>
 
