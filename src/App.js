@@ -331,7 +331,7 @@ function App() {
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", backgroundColor: "#f1f5f9", padding: "15px" }}>
       <style>{globalStyles}</style>
       <div style={{ width: "95%", maxWidth: "400px", textAlign: "center", padding: "30px", background: "white", borderRadius: "16px", border: "1px solid #e2e8f0" }}>
-        <h1 className="brand-logo" style={{ marginBottom: "30px" }}>SUBHAMS</h1>
+        <h1 className="brand-logo" style={{ marginBottom: "30px" }}>Subhams</h1>
         <div className="spinner"></div>
         <h2 style={{marginTop: "20px", color: "#64748b", fontSize: "1.2rem"}}>Communicating...</h2>
       </div>
@@ -342,7 +342,7 @@ function App() {
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", backgroundColor: "#f1f5f9", padding: "15px" }}>
       <style>{globalStyles}</style>
       <div className="card" style={{ width: "95%", maxWidth: "420px", textAlign: "center", padding: "35px 20px" }}>
-        <h1 className="brand-logo" style={{ marginBottom: "10px" }}>SUBHAMS</h1>
+        <h1 className="brand-logo" style={{ marginBottom: "10px" }}>Subhams</h1>
         <p style={{ color: "#64748b", marginBottom: "25px", fontWeight: "bold" }}>PMMS</p>
         
         {authMode === "login" && (
