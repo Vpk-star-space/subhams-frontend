@@ -271,18 +271,47 @@ function App() {
       if (spendPercent <= 30) insightClass = "insight-green"; else if (spendPercent >= 75) insightClass = "insight-red"; else insightClass = "insight-blue"; 
     }
   }
-
-  // ================= 📱 THE FINAL CSS FIXES =================
+// ================= 📱 THE FINAL CSS FIXES =================
   const globalStyles = `
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background-color: #f1f5f9; margin: 0; color: #334155; }
+    
+    /* Center and enlarge the Login/Wakeup box for Mobile */
+    .mobile-center-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      width: 100%;
+      padding: 20px;
+      background-color: #f1f5f9;
+    }
+
+    .login-card-large {
+      width: 100%;
+      max-width: 450px; /* Slightly wider for better presence */
+      padding: 40px 25px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    /* Date Input Fix for Mobile (making sure they are visible and tappable) */
+    .input-clean[type="date"] {
+      appearance: none;
+      -webkit-appearance: none;
+      min-height: 55px; /* Bigger touch target */
+      background-color: white !important;
+      color: #0f172a !important;
+      display: flex;
+      align-items: center;
+    }
+
     .nav-bar { background: #0f172a; color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; }
     .container { max-width: 1200px; margin: 0 auto; padding: 15px; }
     .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; margin-bottom: 20px; }
-    
-    /* 1. CENTER LOGIN WRAPPER */
-    .login-wrapper { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; background-color: #f1f5f9; }
-    .login-box { width: 100%; max-width: 400px; padding: 30px 20px; background: white; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; }
     
     .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 20px; }
     .action-grid { display: grid; grid-template-columns: 35% 65%; gap: 20px; }
@@ -292,72 +321,48 @@ function App() {
     .metric-title { font-size: 0.85rem; color: #64748b; font-weight: bold; letter-spacing: 1px; }
     .metric-value { font-size: 2rem; font-weight: 800; margin: 10px 0 0 0; }
     
-    .form-group { display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px; }
-    
     .input-clean { padding: 14px 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; width: 100%; outline: none; background: white; }
     .input-clean:focus { border-color: #3b82f6; }
     
     .btn { padding: 14px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 16px; transition: 0.2s; display: flex; justify-content: center; align-items: center; }
-    .btn:hover { opacity: 0.9; }
-    .btn-green { background: #10b981; color: white; }
-    .btn-red { background: #ef4444; color: white; }
     .btn-blue { background: #3b82f6; color: white; }
-    .btn-dark { background: #1e293b; color: white; }
-    
-    /* 2. HISTORY FILTERS FIXED FOR MOBILE */
-    .filter-container { display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px; }
-    .date-row { display: flex; gap: 10px; flex-wrap: wrap; }
-    .date-row > div { flex: 1; min-width: 130px; }
-    .date-label { font-size: 0.85rem; color: #64748b; margin-bottom: 5px; font-weight: bold; }
-    
-    .history-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #f1f5f9; }
-    .insight-green { background: #f0fdf4; border-left: 5px solid #10b981; color: #065f46; }
-    .insight-red { background: #fef2f2; border-left: 5px solid #ef4444; color: #991b1b; }
-    .insight-blue { background: #eff6ff; border-left: 5px solid #3b82f6; color: #1e40af; }
-    
-    .spinner { width: 50px; height: 50px; border: 5px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
-    .marquee-container { background-color: #1e293b; color: #fbbf24; padding: 10px; overflow: hidden; white-space: nowrap; }
-    .marquee-text { display: inline-block; animation: scrollLeft 30s linear infinite; font-weight: 500; letter-spacing: 0.5px; }
+    .spinner { width: 60px; height: 60px; border: 6px solid #e2e8f0; border-top-color: #f59e0b; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes scrollLeft { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
-    .brand-logo { font-size: 2.2rem; font-weight: 900; letter-spacing: -1px; margin: 0; background: linear-gradient(45deg, #f59e0b, #facc15); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .scrollable-history::-webkit-scrollbar { width: 6px; }
-    .scrollable-history::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
-    .scrollable-history::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .brand-logo { font-size: 2.5rem; font-weight: 900; letter-spacing: -1px; margin: 0; background: linear-gradient(45deg, #f59e0b, #facc15); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
   `;
 
   if (isMaintenanceMode) return <div style={{textAlign: "center", padding: "100px"}}><h1>🛠️ Maintenance</h1></div>;
+  // Update the Wakeup (Server Waking) Screen
   if (isServerWaking) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", backgroundColor: "#f1f5f9", padding: "15px" }}>
+    <div className="mobile-center-screen">
       <style>{globalStyles}</style>
-      <div style={{ width: "95%", maxWidth: "400px", textAlign: "center", padding: "30px", background: "white", borderRadius: "16px", border: "1px solid #e2e8f0" }}>
-        <h1 className="brand-logo" style={{ marginBottom: "30px" }}>Subhams</h1>
+      <div className="login-card-large">
+        <h1 className="brand-logo" style={{ marginBottom: "40px" }}>Subhams</h1>
         <div className="spinner"></div>
-        <h2 style={{marginTop: "20px", color: "#64748b", fontSize: "1.2rem"}}>Communicating...</h2>
+        <h2 style={{marginTop: "30px", color: "#1e293b", fontSize: "1.4rem"}}>Waking Up Server...</h2>
+        <p style={{color: "#64748b"}}>Please wait a few seconds</p>
       </div>
     </div>
   );
 
+// Update the Login/Auth Screen
   if (!token) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", backgroundColor: "#f1f5f9", padding: "15px" }}>
+    <div className="mobile-center-screen">
       <style>{globalStyles}</style>
-      <div className="card" style={{ width: "95%", maxWidth: "420px", textAlign: "center", padding: "35px 20px" }}>
+      <div className="login-card-large">
         <h1 className="brand-logo" style={{ marginBottom: "10px" }}>Subhams</h1>
-        <p style={{ color: "#64748b", marginBottom: "25px", fontWeight: "bold" }}>PMMS</p>
+        <p style={{ color: "#64748b", marginBottom: "35px", fontWeight: "bold", letterSpacing: "2px" }}>PMMS</p>
         
         {authMode === "login" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-            <div className="form-group">
-              <input className="input-clean" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
-              <input className="input-clean" type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
-            </div>
-            <button className="btn btn-blue" style={{ width: "100%" }} onClick={login}>Login</button>
-            <p style={{ fontSize: "0.9rem" }}>Don't have an account? <span style={{ color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("register")}>Create one here</span></p>
-            <div style={{ margin: "15px 0", color: "#cbd5e1", fontSize: "0.9rem" }}>────── OR ──────</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+            <input className="input-clean" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
+            <input className="input-clean" type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
+            <button className="btn btn-blue" style={{ width: "100%", fontSize: "1.1rem" }} onClick={login}>Login</button>
+            <p style={{ fontSize: "0.95rem" }}>New here? <span style={{ color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("register")}>Create Account</span></p>
+            <div style={{ margin: "10px 0", color: "#cbd5e1" }}>────── OR ──────</div>
             <div style={{ display: "flex", justifyContent: "center" }}><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => alert("Google Error")} /></div>
           </div>
         )}
-
         {authMode === "register" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             <h3 style={{ color: "#10b981", margin: "0" }}>Create Account</h3>
