@@ -271,45 +271,11 @@ function App() {
       if (spendPercent <= 30) insightClass = "insight-green"; else if (spendPercent >= 75) insightClass = "insight-red"; else insightClass = "insight-blue"; 
     }
   }
-// ================= 📱 THE FINAL CSS FIXES =================
+
   const globalStyles = `
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background-color: #f1f5f9; margin: 0; color: #334155; }
-    
-    /* Center and enlarge the Login/Wakeup box for Mobile */
-    .mobile-center-screen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      width: 100%;
-      padding: 20px;
-      background-color: #f1f5f9;
-    }
-
-    .login-card-large {
-      width: 100%;
-      max-width: 450px; /* Slightly wider for better presence */
-      padding: 40px 25px;
-      background: white;
-      border-radius: 20px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-      text-align: center;
-    }
-
-    /* Date Input Fix for Mobile (making sure they are visible and tappable) */
-    .input-clean[type="date"] {
-      appearance: none;
-      -webkit-appearance: none;
-      min-height: 55px; /* Bigger touch target */
-      background-color: white !important;
-      color: #0f172a !important;
-      display: flex;
-      align-items: center;
-    }
-
-    .nav-bar { background: #0f172a; color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; }
+    .nav-bar { background: #0f172a; color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
     .container { max-width: 1200px; margin: 0 auto; padding: 15px; }
     .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; margin-bottom: 20px; }
     
@@ -321,64 +287,73 @@ function App() {
     .metric-title { font-size: 0.85rem; color: #64748b; font-weight: bold; letter-spacing: 1px; }
     .metric-value { font-size: 2rem; font-weight: 800; margin: 10px 0 0 0; }
     
-    .input-clean { padding: 14px 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; width: 100%; outline: none; background: white; }
-    .input-clean:focus { border-color: #3b82f6; }
+    .history-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #f1f5f9; }
+    .insight-green { background: #f0fdf4; border-left: 5px solid #10b981; color: #065f46; padding: 15px; border-radius: 8px;}
+    .insight-red { background: #fef2f2; border-left: 5px solid #ef4444; color: #991b1b; padding: 15px; border-radius: 8px;}
+    .insight-blue { background: #eff6ff; border-left: 5px solid #3b82f6; color: #1e40af; padding: 15px; border-radius: 8px;}
     
-    .btn { padding: 14px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 16px; transition: 0.2s; display: flex; justify-content: center; align-items: center; }
-    .btn-blue { background: #3b82f6; color: white; }
-    .spinner { width: 60px; height: 60px; border: 6px solid #e2e8f0; border-top-color: #f59e0b; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
+    .spinner { width: 50px; height: 50px; border: 5px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
+    .marquee-container { background-color: #1e293b; color: #fbbf24; padding: 10px; overflow: hidden; white-space: nowrap; }
+    .marquee-text { display: inline-block; animation: scrollLeft 30s linear infinite; font-weight: 500; letter-spacing: 0.5px; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .brand-logo { font-size: 2.5rem; font-weight: 900; letter-spacing: -1px; margin: 0; background: linear-gradient(45deg, #f59e0b, #facc15); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    @keyframes scrollLeft { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
+    .brand-logo { font-size: 2.2rem; font-weight: 900; letter-spacing: -1px; margin: 0; background: linear-gradient(45deg, #f59e0b, #facc15); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .scrollable-history::-webkit-scrollbar { width: 6px; }
+    .scrollable-history::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+    .scrollable-history::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
   `;
 
   if (isMaintenanceMode) return <div style={{textAlign: "center", padding: "100px"}}><h1>🛠️ Maintenance</h1></div>;
-  // Update the Wakeup (Server Waking) Screen
+  
   if (isServerWaking) return (
-    <div className="mobile-center-screen">
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", backgroundColor: "#f1f5f9", padding: "20px" }}>
       <style>{globalStyles}</style>
-      <div className="login-card-large">
-        <h1 className="brand-logo" style={{ marginBottom: "40px" }}>Subhams</h1>
+      <div style={{ width: "100%", maxWidth: "400px", backgroundColor: "white", padding: "40px 20px", borderRadius: "16px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", textAlign: "center" }}>
+        <h1 className="brand-logo" style={{ marginBottom: "30px" }}>SUBHAMS</h1>
         <div className="spinner"></div>
-        <h2 style={{marginTop: "30px", color: "#1e293b", fontSize: "1.4rem"}}>Waking Up Server...</h2>
-        <p style={{color: "#64748b"}}>Please wait a few seconds</p>
+        <h2 style={{marginTop: "20px", color: "#64748b"}}>Communicating...</h2>
       </div>
     </div>
   );
 
-// Update the Login/Auth Screen
+  // 🟢 1. BRUTE FORCE LOGIN SCREEN (Cannot fail on mobile)
   if (!token) return (
-    <div className="mobile-center-screen">
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", backgroundColor: "#f1f5f9", padding: "20px" }}>
       <style>{globalStyles}</style>
-      <div className="login-card-large">
-        <h1 className="brand-logo" style={{ marginBottom: "10px" }}>Subhams</h1>
-        <p style={{ color: "#64748b", marginBottom: "35px", fontWeight: "bold", letterSpacing: "2px" }}>PMMS</p>
+      <div style={{ width: "100%", maxWidth: "400px", backgroundColor: "white", padding: "40px 25px", borderRadius: "16px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", textAlign: "center" }}>
+        <h1 className="brand-logo" style={{ marginBottom: "5px", fontSize: "2.5rem" }}>SUBHAMS</h1>
+        <p style={{ color: "#ef4444", marginBottom: "25px", fontWeight: "bold", fontSize: "1rem" }}>PMMS - Version 2.0</p> 
+        {/* ^^^ IF VERCEL WORKS, YOU WILL SEE "Version 2.0" ON YOUR PHONE ^^^ */}
         
         {authMode === "login" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
-            <input className="input-clean" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
-            <input className="input-clean" type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
-            <button className="btn btn-blue" style={{ width: "100%", fontSize: "1.1rem" }} onClick={login}>Login</button>
-            <p style={{ fontSize: "0.95rem" }}>New here? <span style={{ color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("register")}>Create Account</span></p>
-            <div style={{ margin: "10px 0", color: "#cbd5e1" }}>────── OR ──────</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+            <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", width: "100%" }} placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
+            <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", width: "100%" }} type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
+            <button style={{ padding: "15px", background: "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", width: "100%", marginTop: "5px" }} onClick={login}>Login</button>
+            <p style={{ fontSize: "14px", margin: "5px 0" }}>Don't have an account? <span style={{ color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("register")}>Create one here</span></p>
+            <div style={{ margin: "15px 0", color: "#cbd5e1", fontSize: "14px" }}>────── OR ──────</div>
             <div style={{ display: "flex", justifyContent: "center" }}><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => alert("Google Error")} /></div>
           </div>
         )}
+
         {authMode === "register" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-            <h3 style={{ color: "#10b981", margin: "0" }}>Create Account</h3>
-            <input className="input-clean" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-            <input className="input-clean" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
-            <input className="input-clean" type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
-            <button className="btn btn-green" onClick={requestRegister}>Send OTP</button>
-            <p onClick={() => setAuthMode("login")}>Back to Login</p>
+            <h3 style={{ color: "#10b981", margin: "0 0 10px 0" }}>Create an Account</h3>
+            <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", width: "100%" }} placeholder="Email Address" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+            <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", width: "100%" }} placeholder="Choose a Username" value={username} onChange={e => setUsername(e.target.value)} />
+            <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", width: "100%" }} type="password" placeholder="Strong Password" value={password} onChange={e => setPassword(e.target.value)} />
+            <button style={{ padding: "15px", background: "#10b981", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", width: "100%", marginTop: "10px" }} onClick={requestRegister}>Send OTP</button>
+            <p style={{ fontSize: "14px", margin: "10px 0" }}>Already have an account? <span style={{ color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("login")}>Login instead</span></p>
           </div>
         )}
 
         {authMode === "otp" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-            <h3>Enter OTP Code</h3>
-            <input className="input-clean" placeholder="6-Digit OTP" value={otp} onChange={e => setOtp(e.target.value)} style={{textAlign:"center", fontSize:"24px"}} />
-            <button className="btn btn-green" onClick={verifyOtpAndRegister}>Verify & Register</button>
+            <h3 style={{ color: "#f59e0b", margin: "0" }}>Enter OTP Code</h3>
+            <p style={{ fontSize: "14px", color: "#64748b", margin: "0 0 10px 0" }}>Code sent to <b>{email}</b></p>
+            <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "24px", letterSpacing: "5px", textAlign: "center", width: "100%" }} placeholder="6-Digit OTP" type="text" value={otp} onChange={e => setOtp(e.target.value)} />
+            <button style={{ padding: "15px", background: "#10b981", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", width: "100%", marginTop: "10px" }} onClick={verifyOtpAndRegister}>Verify & Register</button>
+            <p style={{ fontSize: "14px", margin: "10px 0" }}><span style={{ color: "#ef4444", cursor: "pointer" }} onClick={() => setAuthMode("register")}>Cancel & Go Back</span></p>
           </div>
         )}
       </div>
@@ -397,7 +372,7 @@ function App() {
       
       <nav className="nav-bar">
         <h2 className="brand-logo" style={{ fontSize: "1.8rem" }}>Subhams</h2>
-        <button className="btn btn-red" style={{ padding: "8px 15px", fontSize: "0.9rem" }} onClick={logout}>Logout</button>
+        <button style={{ padding: "10px 20px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }} onClick={logout}>Logout</button>
       </nav>
 
       <div className="container">
@@ -417,75 +392,63 @@ function App() {
         </div>
 
         {smartMsg && (
-          <div className={`card ${insightClass}`} style={{ marginBottom: "25px", padding: "15px 25px" }}>
-            <h4 style={{ margin: "0 0 8px 0" }}>💡 Subhams Insights:</h4>
-            <div style={{ lineHeight: "1.5" }}>
-              {smartMsg} <br />
-              <small style={{ opacity: 0.8 }}>{smartMsgTe}</small>
+          <div style={{ backgroundColor: "white", borderRadius: "16px", padding: "20px", marginBottom: "20px", border: "1px solid #e2e8f0" }}>
+            <div className={insightClass}>
+              <h4 style={{ margin: "0 0 8px 0" }}>💡 Subhams Insights:</h4>
+              <div style={{ lineHeight: "1.5" }}>{smartMsg} <br /><small style={{ opacity: 0.8 }}>{smartMsgTe}</small></div>
             </div>
           </div>
         )}
 
         <div className="action-grid">
           
-          <div className="card" ref={formRef} style={{ alignSelf: "start", marginBottom: 0 }}>
+          <div style={{ backgroundColor: "white", borderRadius: "16px", padding: "25px", border: "1px solid #e2e8f0", alignSelf: "start" }}>
             <h3 style={{ marginTop: 0 }}>{editingId ? "✏️ Edit" : "➕ Add Money"}</h3>
-            <div className="form-group">
-              <input className="input-clean" placeholder="Title (e.g., Rent)" value={title} onChange={e => setTitle(e.target.value)} />
-              <input className="input-clean" type="number" placeholder="Amount (₹)" value={amount} onChange={e => setAmount(e.target.value)} />
-              <select className="input-clean" value={category} onChange={e => setCategory(e.target.value)}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", width: "100%" }} placeholder="Title (e.g., Rent)" value={title} onChange={e => setTitle(e.target.value)} />
+              <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", width: "100%" }} type="number" placeholder="Amount (₹)" value={amount} onChange={e => setAmount(e.target.value)} />
+              <select style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", width: "100%", backgroundColor: "white" }} value={category} onChange={e => setCategory(e.target.value)}>
                 <option value="Food">🍔 Food</option><option value="Travel">✈️ Travel</option><option value="Salary">💰 Salary</option><option value="Shopping">🛍️ Shopping</option><option value="Other">📌 Other</option>
               </select>
-              <input className="input-clean" type="date" value={date} onChange={e => setDate(e.target.value)} />
+              <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", width: "100%" }} type="date" value={date} onChange={e => setDate(e.target.value)} />
             </div>
             <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-              <button className="btn btn-green" style={{ flex: 1 }} onClick={() => handleSubmit("income")}>+ Income</button>
-              <button className="btn btn-red" style={{ flex: 1 }} onClick={() => handleSubmit("expense")}>- Expense</button>
+              <button style={{ flex: 1, padding: "14px", background: "#10b981", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }} onClick={() => handleSubmit("income")}>+ Income</button>
+              <button style={{ flex: 1, padding: "14px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }} onClick={() => handleSubmit("expense")}>- Expense</button>
             </div>
-            {editingId && <button className="btn" style={{ width: "100%", marginTop: "10px", background: "#e2e8f0", color: "#334155" }} onClick={cancelEdit}>Cancel Edit</button>}
+            {editingId && <button style={{ width: "100%", padding: "14px", background: "#e2e8f0", color: "#334155", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", marginTop: "10px" }} onClick={cancelEdit}>Cancel Edit</button>}
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             
-            <div className="card" style={{ maxHeight: "600px", overflowY: "hidden", display: "flex", flexDirection: "column", marginBottom: 0 }}>
+            <div style={{ backgroundColor: "white", borderRadius: "16px", padding: "20px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column" }}>
               <h3 style={{ margin: "0 0 15px 0" }}>📜 History</h3>
               
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "15px" }}>
-                  <input className="input-clean" placeholder="Search Title or Amount..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-                  <select className="input-clean" value={filterType} onChange={e => setFilterType(e.target.value)}>
-                    <option value="All">All Types</option><option value="income">Income</option><option value="expense">Expense</option>
-                  </select>
-                  
-               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "15px" }}>
-    <div style={{ flex: "1 1 140px" }}>
-      <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "bold", marginBottom: "4px" }}>From Date:</div>
-      <input 
-        className="input-clean" 
-        type="date" 
-        value={filterStartDate} 
-        onChange={e => setFilterStartDate(e.target.value)} 
-        style={{ color: "black", background: "white", minHeight: "52px", display: "flex", alignItems: "center", WebkitAppearance: "listbox" }} 
-      />
-    </div>
-    <div style={{ flex: "1 1 140px" }}>
-      <div style={{ fontSize: "12px", color: "#64748b", fontWeight: "bold", marginBottom: "4px" }}>To Date:</div>
-      <input 
-        className="input-clean" 
-        type="date" 
-        value={filterEndDate} 
-        onChange={e => setFilterEndDate(e.target.value)} 
-        style={{ color: "black", background: "white", minHeight: "52px", display: "flex", alignItems: "center", WebkitAppearance: "listbox" }} 
-      />
-    </div>
-  </div>
-
-                  <div style={{ display: "flex", gap: "10px", marginTop: "5px" }}>
-                    <button className="btn btn-blue" style={{ flex: 1 }} onClick={applyFilters}>Filter</button>
-                    <button className="btn" style={{ flex: 1, background: "#e2e8f0", color: "#334155" }} onClick={clearFilters}>Clear</button>
+              {/* 🟢 2. BRUTE FORCE FILTERS (Cannot squish on mobile) */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+                <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", width: "100%" }} placeholder="Search Title or Amount..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                <select style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", width: "100%", backgroundColor: "white" }} value={filterType} onChange={e => setFilterType(e.target.value)}>
+                  <option value="All">All Types</option><option value="income">Income</option><option value="expense">Expense</option>
+                </select>
+                
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+                  <div style={{ flex: "1 1 140px", display: "flex", flexDirection: "column" }}>
+                    <label style={{ fontSize: "12px", fontWeight: "bold", color: "#64748b", marginBottom: "5px" }}>From Date:</label>
+                    <input type="date" style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", width: "100%" }} value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
+                  </div>
+                  <div style={{ flex: "1 1 140px", display: "flex", flexDirection: "column" }}>
+                    <label style={{ fontSize: "12px", fontWeight: "bold", color: "#64748b", marginBottom: "5px" }}>To Date:</label>
+                    <input type="date" style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", width: "100%" }} value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
                   </div>
                 </div>
 
-              <div className="scrollable-history" style={{ flex: 1, overflowY: "auto", paddingRight: "5px", marginTop: "10px" }}>
+                <div style={{ display: "flex", gap: "10px", marginTop: "5px" }}>
+                  <button style={{ flex: 1, padding: "14px", background: "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }} onClick={applyFilters}>Filter</button>
+                  <button style={{ flex: 1, padding: "14px", background: "#e2e8f0", color: "#334155", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }} onClick={clearFilters}>Clear</button>
+                </div>
+              </div>
+
+              <div className="scrollable-history" style={{ flex: 1, overflowY: "auto", maxHeight: "400px", paddingRight: "5px" }}>
                 {transactions.length === 0 && <p style={{ color: "#94a3b8", textAlign: "center" }}>No records found.</p>}
                 {transactions.map((t) => (
                   <div key={t._id} className="history-item">
@@ -508,11 +471,11 @@ function App() {
             </div>
 
             {transactions.length > 0 && (
-              <button className="btn btn-dark" onClick={downloadWhitePaper} style={{ padding: "15px", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', borderRadius: "12px" }}>
-                <span style={{ fontSize: "1.5rem" }}>📄</span>
+              <button style={{ width: "100%", padding: "20px", background: "#1e293b", color: "white", border: "none", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "15px", cursor: "pointer" }} onClick={downloadWhitePaper}>
+                <span style={{ fontSize: "1.8rem" }}>📄</span>
                 <div style={{ textAlign: "left" }}>
-                  <div style={{ fontWeight: "bold" }}>Download History Report</div>
-                  <div style={{ fontSize: "0.8rem", opacity: 0.8, marginTop: "2px" }}>Official PDF Report</div>
+                  <div style={{ fontWeight: "bold", fontSize: "16px" }}>Download History Report</div>
+                  <div style={{ fontSize: "12px", opacity: 0.8, marginTop: "4px" }}>Official PDF Report</div>
                 </div>
               </button>
             )}
@@ -521,13 +484,13 @@ function App() {
         </div>
 
         <div className="action-grid" style={{ marginTop: "20px" }}>
-          <div className="card">
+          <div style={{ backgroundColor: "white", borderRadius: "16px", padding: "20px", border: "1px solid #e2e8f0" }}>
             <h3 style={{ textAlign: "center", marginTop: 0 }}>📊 Overview</h3>
             <ResponsiveContainer width="100%" height={220}>
               <PieChart><Pie data={pieData} innerRadius={50} outerRadius={70} dataKey="value"><Cell fill="#10b981" /><Cell fill="#ef4444" /></Pie><Tooltip /><Legend /></PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="card">
+          <div style={{ backgroundColor: "white", borderRadius: "16px", padding: "20px", border: "1px solid #e2e8f0" }}>
             <h3 style={{ textAlign: "center", marginTop: 0 }}>📈 Monthly Trends</h3>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={monthlyChartData}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="income" fill="#10b981" /><Bar dataKey="expense" fill="#ef4444" /></BarChart>
@@ -535,19 +498,19 @@ function App() {
           </div>
         </div>
 
-        <div className="card" style={{ marginTop: "20px" }}>
+        <div style={{ backgroundColor: "white", borderRadius: "16px", padding: "25px", border: "1px solid #e2e8f0", marginTop: "20px" }}>
           <h3 style={{ marginTop: 0 }}>🧮 Simple Interest Calculator</h3>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <input className="input-clean" placeholder="Principal (₹)" onChange={(e) => setInterestData({...interestData, principal: e.target.value})} />
-            <input className="input-clean" placeholder="Rate (%)" onChange={(e) => setInterestData({...interestData, rate: e.target.value})} />
-            <input className="input-clean" placeholder="Time (Months)" onChange={(e) => setInterestData({...interestData, time: e.target.value})} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "15px", marginBottom: "15px" }}>
+            <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", width: "100%" }} placeholder="Principal (₹)" onChange={(e) => setInterestData({...interestData, principal: e.target.value})} />
+            <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", width: "100%" }} placeholder="Rate (%)" onChange={(e) => setInterestData({...interestData, rate: e.target.value})} />
+            <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", width: "100%" }} placeholder="Time (Months)" onChange={(e) => setInterestData({...interestData, time: e.target.value})} />
           </div>
-          <button className="btn btn-blue" style={{ marginTop: "15px", width: "100%" }} onClick={calculateInterest}>Calculate</button>
+          <button style={{ width: "100%", padding: "14px", background: "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }} onClick={calculateInterest}>Calculate</button>
           
           {interestResult.interest !== undefined && (
             <div className="insight-green" style={{ marginTop: "20px", padding: "15px", borderRadius: "8px" }}>
-              <p style={{ margin: "5px 0" }}>Earned Interest: <b>₹{interestResult.interest}</b></p>
-              <p style={{ margin: "5px 0" }}>Total Maturity Amount: <b>₹{interestResult.total}</b></p>
+              <p style={{ margin: "5px 0", fontSize: "16px" }}>Earned Interest: <b>₹{interestResult.interest}</b></p>
+              <p style={{ margin: "5px 0", fontSize: "16px" }}>Total Maturity Amount: <b>₹{interestResult.total}</b></p>
             </div>
           )}
         </div>
