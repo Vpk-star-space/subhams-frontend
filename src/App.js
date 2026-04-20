@@ -2,11 +2,10 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { GoogleLogin } from '@react-oauth/google';
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import html2canvas from "html2canvas"; // 🟢 Added this for perfect Telugu rendering!
 
 const API = process.env.REACT_APP_BACKEND_URL || "https://subhams-backend.onrender.com/api";
 
-// 🟢 Custom Formatter for STRICT DD-MM-YYYY (For History List)
 const formatDate = (dateString) => {
   if (!dateString) return "";
   const d = new Date(dateString);
@@ -16,7 +15,6 @@ const formatDate = (dateString) => {
   return `${day}-${month}-${year}`;
 };
 
-// 🟢 Custom Formatter for PDF Sheet (Includes Time)
 const formatDateTime = (dateObj) => {
   if (!dateObj) return "";
   const d = new Date(dateObj);
@@ -26,7 +24,7 @@ const formatDateTime = (dateObj) => {
   let hours = d.getHours();
   const minutes = String(d.getMinutes()).padStart(2, '0');
   const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12 || 12; // Convert 24h to 12h
+  hours = hours % 12 || 12; 
   return `${day}-${month}-${year} ${hours}:${minutes} ${ampm}`;
 };
 
@@ -48,6 +46,7 @@ function App() {
   
   const [monthlyChartData, setMonthlyChartData] = useState([]); 
   const [insights, setInsights] = useState(null); 
+  const [isDownloading, setIsDownloading] = useState(false); // 🟢 Added downloading state
   
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
@@ -200,31 +199,93 @@ function App() {
     return () => clearInterval(interval);
   }, [token]);
 
-  const downloadWhitePaper = () => {
+  // 🟢 NEW DOWNLOAD FUNCTION: Fixes Telugu issue & makes a beautiful report!
+  const downloadWhitePaper = async () => {
     if (transactions.length === 0) return alert("No transactions to download!");
-    const doc = new jsPDF();
-    const now = new Date();
-    doc.setFontSize(24); doc.setFont("helvetica", "bold"); doc.setTextColor(245, 158, 11); 
-    doc.text("SUBHAMS PMMS", 14, 22);
-    doc.setFontSize(11); doc.setFont("helvetica", "normal"); doc.setTextColor(100, 116, 139); 
-    doc.text("Official Financial White Paper Report", 14, 30);
-    
-    // 🟢 PDF explicitly formatted with Date and Time
-    doc.text(`Generated on: ${formatDateTime(now)}`, 14, 36);
-    
-    doc.setDrawColor(226, 232, 240); doc.setFillColor(248, 250, 252); doc.rect(14, 45, 182, 25, 'FD'); 
-    doc.setFontSize(12); doc.setTextColor(15, 23, 42);
-    doc.text(`Global Income: Rs. ${income}`, 20, 60); doc.text(`Global Expense: Rs. ${expense}`, 80, 60);
-    if (balance >= 0) doc.setTextColor(16, 185, 129); else doc.setTextColor(239, 68, 68); 
-    doc.text(`Global Balance: Rs. ${balance}`, 140, 60);
-    
-    const tableColumn = ["Date & Time", "Title", "Category", "Type", "Amount (Rs)"];
-    
-    // 🟢 Table dates formatted with DD-MM-YYYY and Time
-    const tableRows = transactions.map(t => [formatDateTime(t.date), t.title, t.category || "Other", t.type.toUpperCase(), t.amount]);
-    
-    autoTable(doc, { head: [tableColumn], body: tableRows, startY: 80, theme: 'grid' });
-    doc.save(`Subhams_Report.pdf`);
+    setIsDownloading(true); // Show a loading indicator
+
+    // 1. Create an invisible, beautiful HTML element
+    const reportDiv = document.createElement("div");
+    reportDiv.style.position = "absolute";
+    reportDiv.style.left = "-9999px"; // Hide it off-screen
+    reportDiv.style.width = "800px"; // Strict width for perfect A4 scaling
+    reportDiv.style.padding = "40px";
+    reportDiv.style.backgroundColor = "#ffffff";
+    reportDiv.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+    reportDiv.style.color = "#0f172a";
+
+    // 2. Build the HTML content (Browser handles Telugu text perfectly here)
+    reportDiv.innerHTML = `
+      <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px;">
+        <h1 style="color: #f59e0b; font-size: 36px; margin: 0 0 5px 0;">SUBHAMS PMMS</h1>
+        <p style="color: #64748b; font-size: 16px; margin: 0;">Official Financial White Paper Report</p>
+        <p style="color: #94a3b8; font-size: 14px; margin-top: 5px;">Generated on: <b>${formatDateTime(new Date())}</b></p>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; background-color: #f8fafc; padding: 25px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 30px;">
+        <div style="font-size: 18px;"><b>Global Income:</b> <span style="color: #10b981;">₹${income}</span></div>
+        <div style="font-size: 18px;"><b>Global Expense:</b> <span style="color: #ef4444;">₹${expense}</span></div>
+        <div style="font-size: 18px;"><b>Global Balance:</b> <span style="color: ${balance >= 0 ? '#3b82f6' : '#ef4444'};">₹${balance}</span></div>
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 15px;">
+        <thead>
+          <tr style="background-color: #10b981; color: white;">
+            <th style="padding: 15px; border: 1px solid #cbd5e1;">Date & Time</th>
+            <th style="padding: 15px; border: 1px solid #cbd5e1;">Title</th>
+            <th style="padding: 15px; border: 1px solid #cbd5e1;">Category</th>
+            <th style="padding: 15px; border: 1px solid #cbd5e1;">Type</th>
+            <th style="padding: 15px; border: 1px solid #cbd5e1; text-align: right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${transactions.map((t, index) => `
+            <tr style="background-color: ${index % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+              <td style="padding: 15px; border: 1px solid #cbd5e1; color: #64748b;">${formatDateTime(t.date)}</td>
+              <td style="padding: 15px; border: 1px solid #cbd5e1; font-weight: bold;">${t.title}</td>
+              <td style="padding: 15px; border: 1px solid #cbd5e1;">${t.category || "Other"}</td>
+              <td style="padding: 15px; border: 1px solid #cbd5e1; font-weight: bold; color: ${t.type === 'income' ? '#10b981' : '#ef4444'};">${t.type.toUpperCase()}</td>
+              <td style="padding: 15px; border: 1px solid #cbd5e1; font-weight: bold; text-align: right;">₹${t.amount}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+
+    document.body.appendChild(reportDiv);
+
+    try {
+      // 3. Take a high-quality picture of the HTML
+      const canvas = await html2canvas(reportDiv, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL("image/png");
+      
+      // 4. Put the picture into the PDF
+      const doc = new jsPDF("p", "mm", "a4");
+      const pdfWidth = doc.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      let heightLeft = pdfHeight;
+      let position = 0;
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      doc.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+
+      // Handle extra long lists (multi-page)
+      while (heightLeft >= 0) {
+        position = heightLeft - pdfHeight;
+        doc.addPage();
+        doc.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+      }
+
+      doc.save(`Subhams_Report.pdf`);
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+      alert("Failed to create PDF. Please try again.");
+    } finally {
+      document.body.removeChild(reportDiv); // Clean up
+      setIsDownloading(false);
+    }
   };
 
   const handleSubmit = async (type) => {
@@ -487,7 +548,6 @@ function App() {
                       <div style={{ color: "#64748b", fontSize: "0.9rem", marginTop: "4px" }}>
                         {t.title} <span style={{ background: "#f1f5f9", padding: "4px 8px", borderRadius: "10px", fontSize: "0.75rem", marginLeft: "5px", fontWeight: "bold", color: "#475569" }}>{t.category || "Other"}</span>
                       </div>
-                      {/* 🟢 Strictly formatted DD-MM-YYYY (No Time) in History List */}
                       <div style={{ fontSize: "0.85rem", color: "#94a3b8", marginTop: "4px", fontWeight: "bold" }}>{formatDate(t.date)}</div>
                     </div>
                     <div style={{ display: "flex", gap: "15px" }}>
@@ -500,10 +560,16 @@ function App() {
             </div>
 
             {transactions.length > 0 && (
-              <button style={{ width: "100%", padding: "20px", background: "#1e293b", color: "white", border: "none", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "15px", cursor: "pointer" }} onClick={downloadWhitePaper}>
-                <span style={{ fontSize: "1.8rem" }}>📄</span>
+              <button 
+                style={{ width: "100%", padding: "20px", background: isDownloading ? "#cbd5e1" : "#1e293b", color: "white", border: "none", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "15px", cursor: isDownloading ? "not-allowed" : "pointer" }} 
+                onClick={downloadWhitePaper}
+                disabled={isDownloading}
+              >
+                <span style={{ fontSize: "1.8rem" }}>{isDownloading ? "⏳" : "📄"}</span>
                 <div style={{ textAlign: "left" }}>
-                  <div style={{ fontWeight: "bold", fontSize: "16px" }}>Download History Report</div>
+                  <div style={{ fontWeight: "bold", fontSize: "16px" }}>
+                    {isDownloading ? "Generating PDF..." : "Download History Report"}
+                  </div>
                   <div style={{ fontSize: "12px", opacity: 0.8, marginTop: "4px" }}>Official PDF Report</div>
                 </div>
               </button>
