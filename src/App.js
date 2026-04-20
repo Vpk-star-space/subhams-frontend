@@ -479,7 +479,7 @@ function App() {
                       <div style={{ color: "#64748b", fontSize: "0.9rem", marginTop: "4px" }}>
                         {t.title} <span style={{ background: "#f1f5f9", padding: "4px 8px", borderRadius: "10px", fontSize: "0.75rem", marginLeft: "5px", fontWeight: "bold", color: "#475569" }}>{t.category || "Other"}</span>
                       </div>
-                      {/* 🟢 Strictly formatted DD-MM-YYYY and Time in History */}
+                     {/* 🟢 Strictly formatted DD-MM-YYYY and Time in History */}
                       <div style={{ fontSize: "0.85rem", color: "#94a3b8", marginTop: "4px", fontWeight: "bold" }}>{formatDateTime(t.date)}</div>
                     </div>
                     <div style={{ display: "flex", gap: "15px" }}>
