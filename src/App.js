@@ -6,51 +6,54 @@ import autoTable from "jspdf-autotable";
 
 const API = process.env.REACT_APP_BACKEND_URL || "https://subhams-backend.onrender.com/api";
 
-// 🟢 Custom Formatter for STRICT DD-MM-YYYY with Time (e.g., 20-04-2026 02:30 PM)
-const formatDateTime = (dateString) => {
+// 🟢 Formatter for STRICT DD-MM-YYYY (For History List & PDF Rows)
+const formatDate = (dateString) => {
   if (!dateString) return "";
   const d = new Date(dateString);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+};
+
+// 🟢 Formatter for STRICT DD-MM-YYYY + Real Time (For PDF "Generated on" Timestamp)
+const formatDateTime = (dateObj) => {
+  if (!dateObj) return "";
+  const d = new Date(dateObj);
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
   let hours = d.getHours();
   const minutes = String(d.getMinutes()).padStart(2, '0');
   const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12 || 12; // Convert 24h to 12h
+  hours = hours % 12 || 12; 
   return `${day}-${month}-${year} ${hours}:${minutes} ${ampm}`;
 };
 
 function App() {
   const [isMaintenanceMode] = useState(false);
-  const [isServerWaking, setIsServerWaking] = useState(!!localStorage.getItem("token")); 
-  const [authMode, setAuthMode] = useState("login"); 
-  
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [refreshToken, setRefreshToken] = useState(localStorage.getItem("refreshToken"));
-  
+  const [isServerWaking, setIsServerWaking] = useState(!!token); 
+  const [authMode, setAuthMode] = useState("login"); 
   const [email, setEmail] = useState(""); 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState(""); 
-  
   const [transactions, setTransactions] = useState([]);
   const [allTransactions, setAllTransactions] = useState([]); 
-  
   const [monthlyChartData, setMonthlyChartData] = useState([]); 
   const [insights, setInsights] = useState(null); 
-  
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [category, setCategory] = useState("Other");
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  
   const [filterType, setFilterType] = useState("All");
   const [filterCategory, setFilterCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState(""); 
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
-  
   const [interestData, setInterestData] = useState({ principal: "", rate: "", time: "" });
   const [interestResult, setInterestResult] = useState({});
 
@@ -185,7 +188,7 @@ function App() {
   useEffect(() => {
     if (!token || token === "null") return;
     const interval = setInterval(() => {
-      fetch(`${API}/transactions/summary`, { headers: { Authorization: `Bearer ${token}` } }).catch(err => console.log("Heartbeat paused."));
+      fetch(`${API}/transactions/summary`, { headers: { Authorization: `Bearer ${token}` } }).catch(err => console.log(""));
     }, 120000); 
     return () => clearInterval(interval);
   }, [token]);
@@ -199,7 +202,7 @@ function App() {
     doc.setFontSize(11); doc.setFont("helvetica", "normal"); doc.setTextColor(100, 116, 139); 
     doc.text("Official Financial White Paper Report", 14, 30);
     
-    // 🟢 PDF explicitly formatted with Date and Time
+    // 🟢 Keep the REAL time for the timestamp
     doc.text(`Generated on: ${formatDateTime(now)}`, 14, 36);
     
     doc.setDrawColor(226, 232, 240); doc.setFillColor(248, 250, 252); doc.rect(14, 45, 182, 25, 'FD'); 
@@ -208,10 +211,9 @@ function App() {
     if (balance >= 0) doc.setTextColor(16, 185, 129); else doc.setTextColor(239, 68, 68); 
     doc.text(`Global Balance: Rs. ${balance}`, 140, 60);
     
-    const tableColumn = ["Date & Time", "Title", "Category", "Type", "Amount (Rs)"];
-    
-    // 🟢 Table dates formatted with DD-MM-YYYY and Time
-    const tableRows = transactions.map(t => [formatDateTime(t.date), t.title, t.category || "Other", t.type.toUpperCase(), t.amount]);
+    const tableColumn = ["Date", "Title", "Category", "Type", "Amount (Rs)"];
+    // 🟢 Removed 5:30 AM from the PDF table rows
+    const tableRows = transactions.map(t => [formatDate(t.date), t.title, t.category || "Other", t.type.toUpperCase(), t.amount]);
     
     autoTable(doc, { head: [tableColumn], body: tableRows, startY: 80, theme: 'grid' });
     doc.save(`Subhams_Report.pdf`);
@@ -299,20 +301,16 @@ function App() {
     .nav-bar { background: #0f172a; color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
     .container { max-width: 1200px; margin: 0 auto; padding: 15px; }
     .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; margin-bottom: 20px; }
-    
     .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 20px; }
     .action-grid { display: grid; grid-template-columns: 35% 65%; gap: 20px; }
     @media (max-width: 900px) { .action-grid { grid-template-columns: 1fr; } }
-    
     .metric-card { text-align: center; padding: 20px; border-radius: 12px; background: white; border: 1px solid #e2e8f0; }
     .metric-title { font-size: 0.85rem; color: #64748b; font-weight: bold; letter-spacing: 1px; }
     .metric-value { font-size: 2rem; font-weight: 800; margin: 10px 0 0 0; }
-    
     .history-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #f1f5f9; }
     .insight-green { background: #f0fdf4; border-left: 5px solid #10b981; color: #065f46; padding: 15px; border-radius: 8px;}
     .insight-red { background: #fef2f2; border-left: 5px solid #ef4444; color: #991b1b; padding: 15px; border-radius: 8px;}
     .insight-blue { background: #eff6ff; border-left: 5px solid #3b82f6; color: #1e40af; padding: 15px; border-radius: 8px;}
-    
     .spinner { width: 50px; height: 50px; border: 5px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
     .marquee-container { background-color: #1e293b; color: #fbbf24; padding: 10px; overflow: hidden; white-space: nowrap; }
     .marquee-text { display: inline-block; animation: scrollLeft 30s linear infinite; font-weight: 500; letter-spacing: 0.5px; }
@@ -477,8 +475,8 @@ function App() {
                       <div style={{ color: "#64748b", fontSize: "0.9rem", marginTop: "4px" }}>
                         {t.title} <span style={{ background: "#f1f5f9", padding: "4px 8px", borderRadius: "10px", fontSize: "0.75rem", marginLeft: "5px", fontWeight: "bold", color: "#475569" }}>{t.category || "Other"}</span>
                       </div>
-                      {/* 🟢 Strictly formatted DD-MM-YYYY and Time in History */}
-                      <div style={{ fontSize: "0.85rem", color: "#94a3b8", marginTop: "4px", fontWeight: "bold" }}>{formatDateTime(t.date)}</div>
+                      {/* 🟢 REMOVED 5:30 AM Time: Now strictly DD-MM-YYYY in History */}
+                      <div style={{ fontSize: "0.85rem", color: "#94a3b8", marginTop: "4px", fontWeight: "bold" }}>{formatDate(t.date)}</div>
                     </div>
                     <div style={{ display: "flex", gap: "15px" }}>
                       <span style={{ cursor: "pointer", color: "#3b82f6", fontWeight: "bold" }} onClick={() => handleEdit(t)}>Edit</span>
