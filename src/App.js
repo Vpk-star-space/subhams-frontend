@@ -6,10 +6,20 @@ import autoTable from "jspdf-autotable";
 
 const API = process.env.REACT_APP_BACKEND_URL || "https://subhams-backend.onrender.com/api";
 
-// 🟢 Custom Formatter for STRICT DD-MM-YYYY with Time (e.g., 20-04-2026 02:30 PM)
-const formatDateTime = (dateString) => {
+// 🟢 Custom Formatter for STRICT DD-MM-YYYY (For History List)
+const formatDate = (dateString) => {
   if (!dateString) return "";
   const d = new Date(dateString);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+};
+
+// 🟢 Custom Formatter for PDF Sheet (Includes Time)
+const formatDateTime = (dateObj) => {
+  if (!dateObj) return "";
+  const d = new Date(dateObj);
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
@@ -281,14 +291,12 @@ function App() {
       smartMsg = `100% of income (₹${income}) has been saved.`; smartMsgTe = `100% ఆదాయం (₹${income}) ఆదా చేయబడింది.`; insightClass = "insight-green"; 
     } else if (expense > income && income > 0) { 
       const spendPercent = Math.round((expense / income) * 100);
-      // 🟢 Realistic Wording Update
       smartMsg = `Total expenses equal ${spendPercent}% of income. Deficit: ₹${expense - income}. Top expense: ${topDrain} (₹${topAmount}).`; 
       smartMsgTe = `ఖర్చులు ఆదాయంలో ${spendPercent}%. లోటు: ₹${expense - income}. ప్రధాన ఖర్చు: ${topDrain} (₹${topAmount}).`; insightClass = "insight-red"; 
     } else if (expense > 0 && income === 0) { 
       smartMsg = `Logged ₹${expense} in expenses with no income recorded.`; smartMsgTe = `₹${expense} ఖర్చు నమోదు చేయబడింది, కానీ ఆదాయం లేదు.`; insightClass = "insight-red"; 
     } else { 
       const spendPercent = Math.round((expense / income) * 100); const savePercent = 100 - spendPercent;
-      // 🟢 Realistic Wording Update
       smartMsg = `Saved ${savePercent}% | Spent ${spendPercent}%. Top expense: ${topDrain} (₹${topAmount}).`; 
       smartMsgTe = `${savePercent}% ఆదా చేశారు | ${spendPercent}% ఖర్చు చేశారు. ప్రధాన ఖర్చు: ${topDrain} (₹${topAmount}).`; 
       if (spendPercent <= 30) insightClass = "insight-green"; else if (spendPercent >= 75) insightClass = "insight-red"; else insightClass = "insight-blue"; 
@@ -479,8 +487,8 @@ function App() {
                       <div style={{ color: "#64748b", fontSize: "0.9rem", marginTop: "4px" }}>
                         {t.title} <span style={{ background: "#f1f5f9", padding: "4px 8px", borderRadius: "10px", fontSize: "0.75rem", marginLeft: "5px", fontWeight: "bold", color: "#475569" }}>{t.category || "Other"}</span>
                       </div>
-                     {/* 🟢 Strictly formatted DD-MM-YYYY and Time in History */}
-                      <div style={{ fontSize: "0.85rem", color: "#94a3b8", marginTop: "4px", fontWeight: "bold" }}>{formatDateTime(t.date)}</div>
+                      {/* 🟢 Strictly formatted DD-MM-YYYY (No Time) in History List */}
+                      <div style={{ fontSize: "0.85rem", color: "#94a3b8", marginTop: "4px", fontWeight: "bold" }}>{formatDate(t.date)}</div>
                     </div>
                     <div style={{ display: "flex", gap: "15px" }}>
                       <span style={{ cursor: "pointer", color: "#3b82f6", fontWeight: "bold" }} onClick={() => handleEdit(t)}>Edit</span>
