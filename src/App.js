@@ -29,7 +29,7 @@ const formatDateTime = (dateObj) => {
 };
 
 function App() {
-  const [isMaintenanceMode] = useState(false);
+  const [isMaintenanceMode] = useState(true);
   const [isServerWaking, setIsServerWaking] = useState(!!localStorage.getItem("token")); 
   const [authMode, setAuthMode] = useState("login"); 
   
