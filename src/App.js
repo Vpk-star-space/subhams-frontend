@@ -2,7 +2,17 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { GoogleLogin } from '@react-oauth/google';
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas"; // 🟢 Added this for perfect Telugu rendering!
+import html2canvas from "html2canvas"; 
+
+// 🛠️ ==========================================
+// 🛠️ MAINTENANCE MODE SETTINGS (MASTER CONTROL)
+// 🛠️ ==========================================
+
+// 🛑 1. MASTER SWITCH: Turn Maintenance Mode ON or OFF
+const isMaintenanceMode = true; // 🟢 Change to 'false' to open your app!
+
+// 🎯 2. TARGET TIME: Tell users when you will be back online
+const targetRestoreTime = "Today at 10:00 AM"; 
 
 const API = process.env.REACT_APP_BACKEND_URL || "https://subhams-backend.onrender.com/api";
 
@@ -28,8 +38,86 @@ const formatDateTime = (dateObj) => {
   return `${day}-${month}-${year} ${hours}:${minutes} ${ampm}`;
 };
 
+// 🛡️ Premium Finance Maintenance Component with LIVE TICKING CLOCK (Bilingual)
+const MaintenanceScreen = () => {
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    const liveTimeString = currentTime.toLocaleTimeString('en-US', { 
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true 
+    });
+
+    return (
+        <div style={smStyles.container}>
+            <style>{`
+                @keyframes secureFlow {
+                    0% { width: 0%; }
+                    100% { width: 100%; }
+                }
+                @keyframes popIn {
+                    0% { transform: scale(0.95); opacity: 0; }
+                    100% { transform: scale(1); opacity: 1; }
+                }
+                .clock-text {
+                    font-variant-numeric: tabular-nums;
+                }
+            `}</style>
+
+            <div style={smStyles.card}>
+                
+                {/* 1. BRAND & HEADER */}
+                <h1 style={smStyles.brandTitle}>SUBHAMS <span style={{color: '#f59e0b'}}>PMMS</span></h1>
+                <div style={smStyles.secureBadge}>🔒 SECURE MAINTENANCE / సురక్షిత నిర్వహణ</div>
+                
+                {/* 2. SIMPLE MESSAGE */}
+                <p style={smStyles.subtitle}>
+                    <strong>Your financial dashboard is currently offline for a security upgrade.</strong><br/>
+                    <span style={{color: '#94a3b8', fontSize: '15px'}}>మీ ఫైనాన్షియల్ డ్యాష్‌బోర్డ్ భద్రతా అప్‌గ్రేడ్ కోసం ప్రస్తుతం ఆఫ్‌లైన్‌లో ఉంది.</span>
+                </p>
+
+                {/* 3. TIME PANELS (Side by Side) */}
+                <div style={smStyles.timePanelContainer}>
+                    <div style={smStyles.liveTimeBox}>
+                        <div style={smStyles.timeLabel}>PRESENT TIME / ప్రస్తుత సమయం</div>
+                        <div className="clock-text" style={smStyles.liveTimeValue}>
+                            {liveTimeString}
+                        </div>
+                    </div>
+
+                    <div style={smStyles.restorePanel}>
+                        <div style={smStyles.timeLabel}>TARGET RESTORE TIME / లక్ష్యం</div>
+                        <div style={smStyles.restoreTime}>{targetRestoreTime}</div>
+                    </div>
+                </div>
+
+                {/* 4. PROGRESS BAR */}
+                <div style={smStyles.progressContainer}>
+                    <div style={smStyles.progressLabel}>
+                        <span>System Optimization (సిస్టమ్ ఆప్టిమైజేషన్)</span>
+                        <span style={{color: '#10b981'}}>Securing Data...</span>
+                    </div>
+                    <div style={smStyles.progressBarBg}>
+                        <div style={smStyles.progressBarFill}></div>
+                    </div>
+                </div>
+
+                {/* 5. FOOTER */}
+                <p style={smStyles.footerText}>
+                    Thank you for your patience. <span style={{fontSize: '13px'}}>(మీ ఓపికకు ధన్యవాదాలు)</span><br/><br/>
+                    <strong>- Venkata Pavan Kumar</strong>
+                </p>
+            </div>
+        </div>
+    );
+};
+
 function App() {
-  const [isMaintenanceMode] = useState(true);
   const [isServerWaking, setIsServerWaking] = useState(!!localStorage.getItem("token")); 
   const [authMode, setAuthMode] = useState("login"); 
   
@@ -46,7 +134,7 @@ function App() {
   
   const [monthlyChartData, setMonthlyChartData] = useState([]); 
   const [insights, setInsights] = useState(null); 
-  const [isDownloading, setIsDownloading] = useState(false); // 🟢 Added downloading state
+  const [isDownloading, setIsDownloading] = useState(false); 
   
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
@@ -163,7 +251,7 @@ function App() {
   };
 
   const fetchAllData = useCallback(async () => {
-    if (!token || token === "null") { setIsServerWaking(false); return; }
+    if (!token || token === "null" || isMaintenanceMode) { setIsServerWaking(false); return; }
     try {
       const headers = { Authorization: `Bearer ${token}` };
       const [tRes, mRes, iRes] = await Promise.all([
@@ -192,29 +280,26 @@ function App() {
   useEffect(() => { fetchAllData(); }, [fetchAllData]);
 
   useEffect(() => {
-    if (!token || token === "null") return;
+    if (!token || token === "null" || isMaintenanceMode) return;
     const interval = setInterval(() => {
       fetch(`${API}/transactions/summary`, { headers: { Authorization: `Bearer ${token}` } }).catch(err => console.log("Heartbeat paused."));
     }, 120000); 
     return () => clearInterval(interval);
   }, [token]);
 
-  // 🟢 NEW DOWNLOAD FUNCTION: Fixes Telugu issue & makes a beautiful report!
   const downloadWhitePaper = async () => {
     if (transactions.length === 0) return alert("No transactions to download!");
-    setIsDownloading(true); // Show a loading indicator
+    setIsDownloading(true); 
 
-    // 1. Create an invisible, beautiful HTML element
     const reportDiv = document.createElement("div");
     reportDiv.style.position = "absolute";
-    reportDiv.style.left = "-9999px"; // Hide it off-screen
-    reportDiv.style.width = "800px"; // Strict width for perfect A4 scaling
+    reportDiv.style.left = "-9999px"; 
+    reportDiv.style.width = "800px"; 
     reportDiv.style.padding = "40px";
     reportDiv.style.backgroundColor = "#ffffff";
     reportDiv.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
     reportDiv.style.color = "#0f172a";
 
-    // 2. Build the HTML content (Browser handles Telugu text perfectly here)
     reportDiv.innerHTML = `
       <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px;">
         <h1 style="color: #f59e0b; font-size: 36px; margin: 0 0 5px 0;">SUBHAMS PMMS</h1>
@@ -255,11 +340,8 @@ function App() {
     document.body.appendChild(reportDiv);
 
     try {
-      // 3. Take a high-quality picture of the HTML
       const canvas = await html2canvas(reportDiv, { scale: 2, useCORS: true });
       const imgData = canvas.toDataURL("image/png");
-      
-      // 4. Put the picture into the PDF
       const doc = new jsPDF("p", "mm", "a4");
       const pdfWidth = doc.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
@@ -270,7 +352,6 @@ function App() {
       doc.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
       heightLeft -= pageHeight;
 
-      // Handle extra long lists (multi-page)
       while (heightLeft >= 0) {
         position = heightLeft - pdfHeight;
         doc.addPage();
@@ -283,7 +364,7 @@ function App() {
       console.error("PDF generation failed:", error);
       alert("Failed to create PDF. Please try again.");
     } finally {
-      document.body.removeChild(reportDiv); // Clean up
+      document.body.removeChild(reportDiv); 
       setIsDownloading(false);
     }
   };
@@ -395,7 +476,10 @@ function App() {
     .scrollable-history::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
   `;
 
-  if (isMaintenanceMode) return <div style={{textAlign: "center", padding: "100px"}}><h1>🛠️ Maintenance</h1></div>;
+  // 🛑 SHOW MAINTENANCE SCREEN IF MASTER SWITCH IS TRUE
+  if (isMaintenanceMode) {
+      return <MaintenanceScreen />;
+  }
   
   if (isServerWaking) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", backgroundColor: "#f1f5f9", padding: "20px" }}>
@@ -614,7 +698,7 @@ function App() {
       <footer style={{ textAlign: "center", padding: "40px 20px", marginTop: "40px", color: "#64748b", backgroundColor: "white", borderTop: "1px solid #e2e8f0" }}>
         <p style={{ margin: "5px 0", fontWeight: "bold" }}>Personal Money Management System</p>
         <p style={{ margin: "5px 0", fontSize: "0.9em" }}>Designed & Developed by</p>
-        <h3 style={{ margin: "10px 0", color: "#0f172a" }}>Venkata Pavan Kumar</h3>
+        <h3 style={{ margin: "10px 0", color: "#0f172a" }}>A. Venkata Pavan Kumar</h3>
         <p style={{ marginTop: "15px", fontSize: "0.9em" }}>
           Check out our other app: <a href="https://bhavyams-vendor-hub-vpk.vercel.app/" target="_blank" rel="noopener noreferrer" style={{ color: "#3b82f6", textDecoration: "none", fontWeight: "bold" }}>Bhavyams VendorHub</a>
         </p>
@@ -623,5 +707,134 @@ function App() {
     </div>
   );
 }
+
+// ==========================================
+// 🎨 SUBHAMS MAINTENANCE STYLES (Premium Finance Look)
+// ==========================================
+const smStyles = {
+    container: {
+        minHeight: '100vh',
+        width: '100%',
+        backgroundColor: '#020617', // Extremely dark slate
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        boxSizing: 'border-box',
+        fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+    },
+    card: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        backgroundColor: '#0f172a', // Slate 900
+        borderRadius: '16px',
+        padding: '40px',
+        maxWidth: '550px',
+        width: '100%',
+        boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.7)',
+        border: '1px solid #1e293b',
+        animation: 'popIn 0.4s ease-out'
+    },
+    brandTitle: {
+        margin: '0 0 15px 0',
+        fontSize: '38px',
+        color: '#ffffff',
+        fontWeight: '900',
+        letterSpacing: '-1px'
+    },
+    secureBadge: {
+        display: 'inline-block',
+        backgroundColor: 'rgba(16, 185, 129, 0.15)',
+        color: '#10b981', // Emerald green
+        padding: '6px 14px',
+        borderRadius: '50px',
+        fontSize: '12px',
+        fontWeight: '700',
+        letterSpacing: '1px',
+        border: '1px solid rgba(16, 185, 129, 0.3)',
+        marginBottom: '25px'
+    },
+    subtitle: {
+        color: '#cbd5e1',
+        fontSize: '16px',
+        lineHeight: '1.6',
+        margin: '0 0 30px 0'
+    },
+    timePanelContainer: {
+        display: 'flex',
+        flexDirection: window.innerWidth < 500 ? 'column' : 'row',
+        width: '100%',
+        gap: '15px',
+        marginBottom: '30px'
+    },
+    liveTimeBox: {
+        flex: 1,
+        backgroundColor: '#1e293b',
+        border: '1px solid #334155',
+        borderRadius: '10px',
+        padding: '15px',
+        borderTop: '4px solid #f59e0b' // Amber/Gold accent
+    },
+    restorePanel: {
+        flex: 1,
+        backgroundColor: '#1e293b',
+        border: '1px solid #334155',
+        borderRadius: '10px',
+        padding: '15px',
+        borderTop: '4px solid #10b981' // Emerald Green accent
+    },
+    timeLabel: {
+        color: '#94a3b8',
+        fontSize: '11px',
+        fontWeight: '700',
+        letterSpacing: '1px',
+        marginBottom: '8px'
+    },
+    liveTimeValue: {
+        color: '#f59e0b', // Amber
+        fontSize: '20px',
+        fontWeight: '900',
+        letterSpacing: '1px'
+    },
+    restoreTime: {
+        color: '#10b981', // Emerald
+        fontSize: '20px',
+        fontWeight: '900',
+        letterSpacing: '0.5px'
+    },
+    progressContainer: {
+        width: '100%',
+        marginBottom: '30px'
+    },
+    progressLabel: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        color: '#e2e8f0',
+        fontSize: '13px',
+        fontWeight: '700',
+        marginBottom: '10px'
+    },
+    progressBarBg: {
+        width: '100%',
+        height: '6px',
+        backgroundColor: '#334155',
+        borderRadius: '10px',
+        overflow: 'hidden'
+    },
+    progressBarFill: {
+        height: '100%',
+        backgroundColor: '#10b981', // Emerald Green
+        animation: 'secureFlow 2s infinite linear',
+        boxShadow: '0 0 10px #10b981'
+    },
+    footerText: {
+        color: '#94a3b8',
+        fontSize: '14px',
+        lineHeight: '1.6',
+        margin: '0'
+    }
+};
 
 export default App;
