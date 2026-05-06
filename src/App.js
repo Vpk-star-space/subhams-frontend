@@ -12,7 +12,7 @@ import html2canvas from "html2canvas";
 const isMaintenanceMode = true; // 🟢 Change to 'false' to open your app!
 
 // 🎯 2. TARGET TIME: Tell users when you will be back online
-const targetRestoreTime = "Today at 10:00 AM"; 
+const targetRestoreTime = "Today at 03:00 PM"; 
 
 const API = process.env.REACT_APP_BACKEND_URL || "https://subhams-backend.onrender.com/api";
 
