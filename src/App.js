@@ -81,17 +81,19 @@ const MaintenanceScreen = () => {
                     <span style={{color: '#94a3b8', fontSize: '15px'}}>మీ ఫైనాన్షియల్ డ్యాష్‌బోర్డ్ భద్రతా అప్‌గ్రేడ్ కోసం ప్రస్తుతం ఆఫ్‌లైన్‌లో ఉంది.</span>
                 </p>
 
-                {/* 3. TIME PANELS (Side by Side) */}
+                {/* 3. TIME PANELS (Side by Side) - RED and GREEN */}
                 <div style={smStyles.timePanelContainer}>
+                    {/* RED BOX: Live Time */}
                     <div style={smStyles.liveTimeBox}>
-                        <div style={smStyles.timeLabel}>            MAINTENANCE / నిర్వహణ సమయం</div>
+                        <div style={smStyles.redLabel}>MAINTENANCE / నిర్వహణ సమయం</div>
                         <div className="clock-text" style={smStyles.liveTimeValue}>
                             {liveTimeString}
                         </div>
                     </div>
 
+                    {/* GREEN BOX: Target Time */}
                     <div style={smStyles.restorePanel}>
-                        <div style={smStyles.timeLabel}>TARGET RESTORE TIME / లక్ష్యం</div>
+                        <div style={smStyles.greenLabel}>TARGET RESTORE TIME / లక్ష్యం</div>
                         <div style={smStyles.restoreTime}>{targetRestoreTime}</div>
                     </div>
                 </div>
@@ -115,6 +117,42 @@ const MaintenanceScreen = () => {
             </div>
         </div>
     );
+};
+
+// 🔄 DYNAMIC LOADING SCREEN FOR SLEEPING SERVERS
+const ServerWakingScreen = () => {
+  const [loadingText, setLoadingText] = useState("Communicating...");
+
+  useEffect(() => {
+    const texts = [
+      "Communicating with secure server...",
+      "Waking up cloud database...",
+      "This may take ~Few seconds if the server was sleeping...",
+      "Establishing encrypted connection...",
+      "Almost ready, preparing your financial dashboard..."
+    ];
+    let i = 0;
+    const interval = setInterval(() => {
+      i = (i + 1) % texts.length;
+      setLoadingText(texts[i]);
+    }, 4000); // Changes text every 4 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", backgroundColor: "#f1f5f9", padding: "20px" }}>
+      <div style={{ width: "100%", maxWidth: "450px", backgroundColor: "white", padding: "40px 20px", borderRadius: "16px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", textAlign: "center" }}>
+        <h1 style={{ fontSize: "2.2rem", fontWeight: 900, letterSpacing: "-1px", margin: "0 0 30px 0", background: "linear-gradient(45deg, #f59e0b, #facc15)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+          SUBHAMS
+        </h1>
+        <div style={{ width: "50px", height: "50px", border: "5px solid #e2e8f0", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto" }}></div>
+        <h2 style={{marginTop: "25px", color: "#64748b", fontSize: "1.1rem", minHeight: "50px", transition: "all 0.3s ease", padding: "0 10px"}}>
+          {loadingText}
+        </h2>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    </div>
+  );
 };
 
 function App() {
@@ -476,22 +514,15 @@ function App() {
     .scrollable-history::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
   `;
 
-  // 🛑 SHOW MAINTENANCE SCREEN IF MASTER SWITCH IS TRUE
+  // 🛑 1. SHOW MAINTENANCE SCREEN IF MASTER SWITCH IS TRUE
   if (isMaintenanceMode) {
       return <MaintenanceScreen />;
   }
   
-  if (isServerWaking) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", backgroundColor: "#f1f5f9", padding: "20px" }}>
-      <style>{globalStyles}</style>
-      <div style={{ width: "100%", maxWidth: "400px", backgroundColor: "white", padding: "40px 20px", borderRadius: "16px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", textAlign: "center" }}>
-        <h1 className="brand-logo" style={{ marginBottom: "30px" }}>SUBHAMS</h1>
-        <div className="spinner"></div>
-        <h2 style={{marginTop: "20px", color: "#64748b"}}>Communicating...</h2>
-      </div>
-    </div>
-  );
+  // ⏳ 2. SHOW DYNAMIC SERVER WAKING SCREEN
+  if (isServerWaking) return <ServerWakingScreen />;
 
+  // 🌐 3. MAIN APPLICATION (NOT LOGGED IN / AUTHENTICATION)
   if (!token) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", backgroundColor: "#f1f5f9", padding: "20px" }}>
       <style>{globalStyles}</style>
@@ -534,6 +565,7 @@ function App() {
     </div>
   );
 
+  // 🌐 4. MAIN APPLICATION (LOGGED IN DASHBOARD)
   return (
     <div>
       <style>{globalStyles}</style>
@@ -715,7 +747,7 @@ const smStyles = {
     container: {
         minHeight: '100vh',
         width: '100%',
-        backgroundColor: '#020617', // Extremely dark slate
+        backgroundColor: '#020617', 
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -728,7 +760,7 @@ const smStyles = {
         flexDirection: 'column',
         alignItems: 'center',
         textAlign: 'center',
-        backgroundColor: '#0f172a', // Slate 900
+        backgroundColor: '#0f172a', 
         borderRadius: '16px',
         padding: '40px',
         maxWidth: '550px',
@@ -747,7 +779,7 @@ const smStyles = {
     secureBadge: {
         display: 'inline-block',
         backgroundColor: 'rgba(16, 185, 129, 0.15)',
-        color: '#10b981', // Emerald green
+        color: '#10b981', 
         padding: '6px 14px',
         borderRadius: '50px',
         fontSize: '12px',
@@ -771,35 +803,42 @@ const smStyles = {
     },
     liveTimeBox: {
         flex: 1,
-        backgroundColor: '#1e293b',
-        border: '1px solid #334155',
+        backgroundColor: '#450a0a', // RED Background
+        border: '1px solid #991b1b', // RED Border
         borderRadius: '10px',
         padding: '15px',
-        borderTop: '4px solid #f59e0b' // Amber/Gold accent
+        borderTop: '4px solid #ef4444' // RED Top Line
     },
     restorePanel: {
         flex: 1,
-        backgroundColor: '#1e293b',
-        border: '1px solid #334155',
+        backgroundColor: '#022c22', // GREEN Background
+        border: '1px solid #065f46', // GREEN Border
         borderRadius: '10px',
         padding: '15px',
-        borderTop: '4px solid #10b981' // Emerald Green accent
+        borderTop: '4px solid #10b981' // GREEN Top Line
     },
-    timeLabel: {
-        color: '#94a3b8',
+    redLabel: {
+        color: '#fca5a5', // Light red label text
+        fontSize: '11px',
+        fontWeight: '700',
+        letterSpacing: '1px',
+        marginBottom: '8px'
+    },
+    greenLabel: {
+        color: '#6ee7b7', // Light green label text
         fontSize: '11px',
         fontWeight: '700',
         letterSpacing: '1px',
         marginBottom: '8px'
     },
     liveTimeValue: {
-        color: '#f59e0b', // Amber
+        color: '#ef4444', // Bright RED Time Text
         fontSize: '20px',
         fontWeight: '900',
         letterSpacing: '1px'
     },
     restoreTime: {
-        color: '#10b981', // Emerald
+        color: '#10b981', // Bright GREEN Time Text
         fontSize: '20px',
         fontWeight: '900',
         letterSpacing: '0.5px'
@@ -825,7 +864,7 @@ const smStyles = {
     },
     progressBarFill: {
         height: '100%',
-        backgroundColor: '#10b981', // Emerald Green
+        backgroundColor: '#10b981', 
         animation: 'secureFlow 2s infinite linear',
         boxShadow: '0 0 10px #10b981'
     },
