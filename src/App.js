@@ -9,7 +9,7 @@ import html2canvas from "html2canvas";
 // 🛠️ ==========================================
 
 // 🛑 1. MASTER SWITCH: Turn Maintenance Mode ON or OFF
-const isMaintenanceMode = false; // 🟢 Change to 'false' to open your app!
+const isMaintenanceMode = true; // 🟢 Change to 'false' to open your app!
 
 // 🎯 2. TARGET TIME: Tell users when you will be back online
 const targetRestoreTime = "Today at 03:00 PM"; 
