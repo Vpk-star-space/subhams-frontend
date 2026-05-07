@@ -730,7 +730,7 @@ function App() {
       <footer style={{ textAlign: "center", padding: "40px 20px", marginTop: "40px", color: "#64748b", backgroundColor: "white", borderTop: "1px solid #e2e8f0" }}>
         <p style={{ margin: "5px 0", fontWeight: "bold" }}>Personal Money Management System</p>
         <p style={{ margin: "5px 0", fontSize: "0.9em" }}>Designed & Developed by</p>
-        <h3 style={{ margin: "10px 0", color: "#0f172a" }}>A. Venkata Pavan Kumar</h3>
+        <h3 style={{ margin: "10px 0", color: "#0f172a" }}> Venkata Pavan Kumar</h3>
         <p style={{ marginTop: "15px", fontSize: "0.9em" }}>
           Check out our other app: <a href="https://bhavyams-vendor-hub-vpk.vercel.app/" target="_blank" rel="noopener noreferrer" style={{ color: "#3b82f6", textDecoration: "none", fontWeight: "bold" }}>Bhavyams VendorHub</a>
         </p>
