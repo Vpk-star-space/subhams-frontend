@@ -735,9 +735,10 @@ function App() {
           Check out our other app: <a href="https://bhavyams-vendor-hub-vpk.vercel.app/" target="_blank" rel="noopener noreferrer" style={{ color: "#3b82f6", textDecoration: "none", fontWeight: "bold" }}>Bhavyams VendorHub</a>
         </p>
 <p style={styles.footerContact}>
+                    Contact: <a href="mailto:venkatapavankumar36@gmail.com" style={styles.footerLink}>venkatapavankumar36@gmail.com</a>
 
-                    Contact: <a href="mailto:pavanvenkat63@gmail.com" style={styles.footerLink}>venkatapavankumar36@gmail.com</a>
-</p>
+                <p style={styles.footerContact}>
+
       </footer>
 
     </div>
