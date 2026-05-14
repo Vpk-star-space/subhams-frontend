@@ -730,46 +730,56 @@ function App() {
      <footer style={{ 
   textAlign: "center", 
   padding: "40px 20px", 
-  marginTop: "40px", 
-  color: "#64748b", 
-  backgroundColor: "white", 
-  borderTop: "1px solid #e2e8e0" 
+  marginTop: "50px", 
+  backgroundColor: "#f8fafc", 
+  borderTop: "1px solid #e2e8f0",
+  color: "#64748b",
+  fontFamily: "system-ui, -apple-system, sans-serif"
 }}>
-  <p style={{ margin: "5px 0", fontWeight: "bold" }}>
-    Personal Money Management System
-  </p>
-  
-  <p style={{ margin: "5px 0", fontSize: "0.9em" }}>
-    Designed & Developed by
-  </p>
-  
-  <h3 style={{ margin: "10px 0", color: "#0f172a" }}>
-    Venkata Pavan Kumar
-  </h3>
-  
-  <p style={{ marginTop: "15px", fontSize: "0.9em" }}>
-    Check out our other app: 
-    <a 
-      href="https://bhavyams-vendor-hub-vpk.vercel.app/" 
-      target="_blank" 
-      rel="noopener noreferrer" 
-      style={{ color: "#3b82f6", textDecoration: "none", fontWeight: "bold", marginLeft: "5px" }}
-    >
-      Bhavyams VendorHub
-    </a>
-  </p>
-
-  <p style={styles.footerContact}>
-    Contact: 
-    <a 
-      href="mailto:pavanvenkat63@gmail.com" 
-      style={styles.footerLink}
-    >
-      pavanvenkat63@gmail.com
-    </a>
-  </p>
+  <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+    <h2 style={{ fontSize: "1.25rem", color: "#0f172a", marginBottom: "5px", fontWeight: "600" }}>
+      Personal Money Management System
+    </h2>
+    
+    <p style={{ margin: "0 0 20px 0", fontSize: "0.95rem" }}>
+      Designed & Developed by <strong style={{ color: "#0f172a" }}>Venkata Pavan Kumar</strong>
+    </p>
+    
+    <div style={{ 
+      display: "flex", 
+      justifyContent: "center", 
+      gap: "24px", 
+      flexWrap: "wrap", 
+      fontSize: "0.9rem", 
+      marginTop: "20px", 
+      paddingTop: "20px", 
+      borderTop: "1px solid #e2e8f0" 
+    }}>
+      <p style={{ margin: 0 }}>
+        🌐 Other App: 
+        <a 
+          href="https://bhavyams-vendor-hub-vpk.vercel.app/" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          style={{ color: "#3b82f6", textDecoration: "none", fontWeight: "500", marginLeft: "6px" }}
+        >
+          Bhavyams VendorHub
+        </a>
+      </p>
+      <p style={{ margin: 0 }}>
+        📧 Contact: 
+        <a 
+          href="mailto: venkatapavankumar36@gmail.com" 
+          style={{ color: "#3b82f6", textDecoration: "none", fontWeight: "500", marginLeft: "6px" }}
+        >
+          venkatapavankumar36@gmail.com
+        </a>
+      </p>
+    </div>
+  </div>
 </footer>
-</div>
+
+
   );
 }
 
