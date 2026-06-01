@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Ba
 import { GoogleLogin } from '@react-oauth/google';
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas"; 
-import { Fingerprint, Calculator, Lock } from 'lucide-react'; 
+import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code } from 'lucide-react';
 
 // 🛠️ ==========================================
 // 🛠️ MAINTENANCE MODE SETTINGS (MASTER CONTROL)
@@ -131,6 +131,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState(""); 
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
+  const [showAllHistory, setShowAllHistory] = useState(false);
   
   const [interestData, setInterestData] = useState({ principal: "", rate: "", time: "" });
   const [interestResult, setInterestResult] = useState({});
@@ -678,10 +679,11 @@ function App() {
                 </div>
               </div>
 
-              <div className="scrollable-history" style={{ flex: 1, overflowY: "auto", maxHeight: "400px", paddingRight: "5px" }}>
+          <div className="scrollable-history" style={{ flex: 1, overflowY: "auto", maxHeight: showAllHistory ? "400px" : "auto", paddingRight: "5px" }}>
                 {transactions.length === 0 && <p style={{ color: "#94a3b8", textAlign: "center" }}>No records found.</p>}
                 
-                {transactions.map((t) => {
+                {/* 🟢 LOGIC: Show all if expanded, otherwise only show the first 5 */}
+                {(showAllHistory ? transactions : transactions.slice(0, 5)).map((t) => {
                   const isInc = t.type === "income";
                   const isExp = t.type === "expense";
                   const bgColor = isInc ? "#f0fdf4" : isExp ? "#fef2f2" : "#fffbeb"; 
@@ -711,6 +713,29 @@ function App() {
                     </div>
                   );
                 })}
+
+                {/* 🟢 THE VIEW MORE BUTTON */}
+                {transactions.length > 5 && (
+                  <div style={{ textAlign: "center", marginTop: "15px", marginBottom: "10px" }}>
+                    <button 
+                      onClick={() => setShowAllHistory(!showAllHistory)}
+                      style={{
+                        background: "white",
+                        border: "1px solid #cbd5e1",
+                        padding: "10px 20px",
+                        borderRadius: "20px",
+                        color: "#3b82f6",
+                        fontWeight: "bold",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      {showAllHistory ? "Show Less ↑" : `View More Transactions (${transactions.length - 5} hidden) ↓`}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -781,12 +806,70 @@ function App() {
         </div>
       </div>
       
-      <footer style={{ textAlign: "center", padding: "40px 20px", marginTop: "40px", color: "#64748b", backgroundColor: "white", borderTop: "1px solid #e2e8f0" }}>
-        <p style={{ margin: "5px 0", fontWeight: "bold" }}>Personal Money Management System</p>
-        <p style={{ margin: "5px 0", fontSize: "0.9em" }}>Designed & Developed by</p>
-        <h3 style={{ margin: "10px 0", color: "#0f172a" }}>Venkata Pavan Kumar Amarthaluri </h3>
-        <p style={{ marginTop: "15px", fontSize: "0.9em" }}>
-          Check out our other app: <a href="https://bhavyams-vendor-hub-vpk.vercel.app/" target="_blank" rel="noopener noreferrer" style={{ color: "#3b82f6", textDecoration: "none", fontWeight: "bold" }}>Bhavyams VendorHub</a>
+    <footer style={{ 
+        padding: "50px 20px", 
+        marginTop: "60px", 
+        background: "linear-gradient(to bottom, #ffffff, #f8fafc)", 
+        borderTop: "1px solid #e2e8f0", 
+        boxShadow: "0 -10px 30px rgba(0, 0, 0, 0.02)", 
+        display: "flex", 
+        flexDirection: "column", 
+        alignItems: "center", 
+        gap: "15px" 
+      }}>
+        {/* App Badge */}
+        <div style={{ 
+          background: "rgba(59, 130, 246, 0.1)", 
+          padding: "8px 16px", 
+          borderRadius: "20px", 
+          color: "#3b82f6", 
+          fontWeight: "800", 
+          fontSize: "13px", 
+          letterSpacing: "1px", 
+          display: "flex", 
+          alignItems: "center", 
+          gap: "6px",
+          textTransform: "uppercase"
+        }}>
+          <Code size={16} /> Personal Money Management System
+        </div>
+
+        {/* Developer Credit */}
+        <div style={{ textAlign: "center", marginTop: "10px" }}>
+          <p style={{ margin: "0", fontSize: "14px", color: "#64748b", fontWeight: "500" }}>Designed & Engineered by</p>
+          <h3 style={{ margin: "8px 0", fontSize: "26px", color: "#0f172a", fontWeight: "900", letterSpacing: "-0.5px" }}>
+            Venkata Pavan Kumar Amarthaluri
+          </h3>
+        </div>
+
+        {/* Contact & Portfolio Links */}
+        <div style={{ display: "flex", gap: "15px", marginTop: "15px", flexWrap: "wrap", justifyContent: "center" }}>
+          {/* Email Button */}
+          <a href="mailto:pavanvenkat63@gmail.com" style={{ 
+            display: "flex", alignItems: "center", gap: "8px", 
+            padding: "12px 24px", background: "white", color: "#475569", 
+            borderRadius: "12px", textDecoration: "none", fontWeight: "700", 
+            border: "1px solid #cbd5e1", boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
+            transition: "all 0.2s ease"
+          }}>
+            <Mail size={18} color="#f59e0b" /> pavanvenkat63@gmail.com
+          </a>
+
+          {/* Other Project Button */}
+          <a href="https://bhavyams-vendor-hub-vpk.vercel.app/" target="_blank" rel="noopener noreferrer" style={{ 
+            display: "flex", alignItems: "center", gap: "8px", 
+            padding: "12px 24px", background: "#3b82f6", color: "white", 
+            borderRadius: "12px", textDecoration: "none", fontWeight: "700", 
+            boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
+            transition: "all 0.2s ease"
+          }}>
+            <ExternalLink size={18} /> Bhavyams VendorHub
+          </a>
+        </div>
+
+        {/* Copyright */}
+        <p style={{ margin: "25px 0 0 0", fontSize: "13px", color: "#94a3b8", fontWeight: "500" }}>
+          © {new Date().getFullYear()} Subhams PMMS. All Rights Reserved.
         </p>
       </footer>
     </div>
