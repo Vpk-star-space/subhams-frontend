@@ -368,7 +368,7 @@ function App() {
         
         <div style="margin-top: 40px; border-top: 2px dashed #cbd5e1; padding-top: 20px; text-align: center; color: #64748b;">
           <p style="margin: 0; font-weight: bold; font-size: 14px;">Subhams Personal Money Management System</p>
-          <p style="margin: 5px 0 0 0; font-size: 12px;">Digitally generated and cryptographically secure. Engineered by A. Venkata Pavan Kumar.</p>
+          <p style="margin: 5px 0 0 0; font-size: 12px;">Digitally generated and cryptographically secure. Engineered by  Venkata Pavan Kumar Amarthaluri.</p>
         </div>
       </div>
     `;
