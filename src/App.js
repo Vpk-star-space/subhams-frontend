@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Ba
 import { GoogleLogin } from '@react-oauth/google';
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas"; 
-import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code } from 'lucide-react';
+import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code } from 'lucide-react'; 
 
 // 🛠️ ==========================================
 // 🛠️ MAINTENANCE MODE SETTINGS (MASTER CONTROL)
@@ -34,11 +34,9 @@ const formatDateTime = (dateObj) => {
   return `${day}-${month}-${year} ${hours}:${minutes} ${ampm}`;
 };
 
-// 🟢 HELPER FUNCTIONS FOR APP LOCK CRYPTOGRAPHY
 const bufferToBase64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
 const base64ToBuffer = (b64) => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
 
-// 🛡️ Premium Finance Maintenance Component
 const MaintenanceScreen = () => {
     const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -77,7 +75,6 @@ const MaintenanceScreen = () => {
     );
 };
 
-// 🔒 THE APP LOCK SCREEN (Hides Data until Fingerprint/PIN is entered)
 const AppLockScreen = ({ onUnlock }) => (
   <div style={smStyles.container}>
     <div style={smStyles.card}>
@@ -102,7 +99,6 @@ function App() {
   const [isServerWaking, setIsServerWaking] = useState(!!localStorage.getItem("token")); 
   const [authMode, setAuthMode] = useState("login"); 
   
-  // 🟢 APP LOCK STATE
   const [isAppLocked, setIsAppLocked] = useState(!!localStorage.getItem("token") && localStorage.getItem("subhams_app_lock") === "true");
   
   const [token, setToken] = useState(localStorage.getItem("token"));
@@ -115,6 +111,7 @@ function App() {
   
   const [transactions, setTransactions] = useState([]);
   const [allTransactions, setAllTransactions] = useState([]); 
+  const [showAllHistory, setShowAllHistory] = useState(false); // 🟢 VIEW MORE STATE
   
   const [monthlyChartData, setMonthlyChartData] = useState([]); 
   const [insights, setInsights] = useState(null); 
@@ -131,7 +128,6 @@ function App() {
   const [searchQuery, setSearchQuery] = useState(""); 
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
-  const [showAllHistory, setShowAllHistory] = useState(false);
   
   const [interestData, setInterestData] = useState({ principal: "", rate: "", time: "" });
   const [interestResult, setInterestResult] = useState({});
@@ -154,7 +150,6 @@ function App() {
     } catch (err) { logout(); return null; }
   }, [refreshToken]);
 
-  // 🟢 1. ENABLE APP LOCK (Sets up FIDO2 Credential)
   const enableAppLock = async () => {
     if (!window.PublicKeyCredential) return alert("Your device doesn't support App Lock.");
     try {
@@ -167,14 +162,12 @@ function App() {
         }
       });
       
-      // Save the credential ID locally to trigger the lock screen next time
       localStorage.setItem("subhams_app_lock_id", bufferToBase64(credential.rawId));
       localStorage.setItem("subhams_app_lock", "true");
       alert("🔒 App Lock Enabled! Your financial data is now secure.");
     } catch (err) { alert("App Lock setup cancelled."); }
   };
 
-  // 🟢 2. UNLOCK APP (Prompts for Fingerprint/PIN to unhide data)
   const handleAppUnlock = async () => {
     try {
       const credentialIdString = localStorage.getItem("subhams_app_lock_id");
@@ -185,7 +178,6 @@ function App() {
       const credentialId = base64ToBuffer(credentialIdString);
       const challenge = new Uint8Array(32); window.crypto.getRandomValues(challenge);
       
-      // Trigger the native OS Screen Lock
       await navigator.credentials.get({ 
           publicKey: { 
               challenge, 
@@ -195,7 +187,6 @@ function App() {
           } 
       });
       
-      // If fingerprint/PIN is correct, unhide the dashboard!
       setIsAppLocked(false);
     } catch (err) { alert("Unlock failed. Please try again."); } 
   };
@@ -214,7 +205,6 @@ function App() {
         setToken(data.accessToken); 
         setRefreshToken(data.refreshToken);
         
-        // If App Lock was previously enabled on this device, lock the screen upon login
         if (localStorage.getItem("subhams_app_lock") === "true") setIsAppLocked(true);
       } else { alert(data.error || "Login failed"); }
     } catch (err) { alert("Backend server is offline."); }
@@ -232,7 +222,6 @@ function App() {
         localStorage.setItem("token", data.accessToken); localStorage.setItem("refreshToken", data.refreshToken);
         setToken(data.accessToken); setRefreshToken(data.refreshToken);
         
-        // If App Lock was previously enabled on this device, lock the screen upon login
         if (localStorage.getItem("subhams_app_lock") === "true") setIsAppLocked(true);
       } else { alert("Google Auth failed in backend."); }
     } catch (err) { alert("Server is offline."); }
@@ -299,105 +288,150 @@ function App() {
     const pdfPending = transactions.filter(t => t.type === "pending").reduce((a, b) => a + Number(b.amount), 0);
     const pdfBalance = pdfIncome - pdfExpense;
 
-    const reportDiv = document.createElement("div");
-    reportDiv.style.position = "absolute"; 
-    reportDiv.style.left = "-9999px"; 
-    reportDiv.style.width = "800px"; 
-    reportDiv.style.padding = "40px";
-    reportDiv.style.backgroundColor = "#ffffff"; 
-    reportDiv.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
-    reportDiv.style.color = "#0f172a";
+    // 🟢 UPDATED PAGINATION: 10 items on page 1, 14 items on following pages for perfect A4 fit
+    const ITEMS_PER_FIRST_PAGE = 10;
+    const ITEMS_PER_NEXT_PAGE = 14;
 
-    reportDiv.innerHTML = `
-      <div style="position: relative; z-index: 1;">
-        <div style="border-bottom: 3px solid #1e293b; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
-          <div>
-            <h1 style="color: #f59e0b; font-size: 38px; margin: 0 0 5px 0; letter-spacing: -1px;">SUBHAMS <span style="color: #1e293b;">PMMS</span></h1>
-            <p style="color: #64748b; font-size: 16px; margin: 0; font-weight: 600;">Official Financial White Paper</p>
-          </div>
-          <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end;">
-            <div style="border: 2px solid #10b981; color: #10b981; padding: 6px 14px; border-radius: 6px; font-weight: 900; font-size: 15px; letter-spacing: 2px; margin-bottom: 12px; background-color: #f0fdf4;">
-              ✓ SUBHAMS VERIFIED
+    const chunks = [];
+    if (transactions.length <= ITEMS_PER_FIRST_PAGE) {
+      chunks.push(transactions);
+    } else {
+      chunks.push(transactions.slice(0, ITEMS_PER_FIRST_PAGE));
+      let remaining = transactions.slice(ITEMS_PER_FIRST_PAGE);
+      while (remaining.length > 0) {
+        chunks.push(remaining.slice(0, ITEMS_PER_NEXT_PAGE));
+        remaining = remaining.slice(ITEMS_PER_NEXT_PAGE);
+      }
+    }
+
+    const doc = new jsPDF("p", "mm", "a4");
+    const pdfWidth = doc.internal.pageSize.getWidth();
+    const pdfHeight = doc.internal.pageSize.getHeight();
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const isFirstPage = i === 0;
+      const isLastPage = i === chunks.length - 1;
+
+      const reportDiv = document.createElement("div");
+      reportDiv.style.position = "absolute"; 
+      reportDiv.style.left = "-9999px"; 
+      reportDiv.style.width = "800px"; 
+      reportDiv.style.minHeight = "1131px"; // Fixed A4 Aspect Ratio
+      reportDiv.style.padding = "40px";
+      reportDiv.style.backgroundColor = "#ffffff"; 
+      reportDiv.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+      reportDiv.style.color = "#0f172a";
+      reportDiv.style.boxSizing = "border-box";
+      reportDiv.style.display = "flex";
+      reportDiv.style.flexDirection = "column";
+
+      // Build Headers
+      let headerHtml = "";
+      if (isFirstPage) {
+        headerHtml = `
+          <div style="border-bottom: 3px solid #1e293b; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+              <h1 style="color: #f59e0b; font-size: 38px; margin: 0 0 5px 0; letter-spacing: -1px;">SUBHAMS <span style="color: #1e293b;">PMMS</span></h1>
+              <p style="color: #64748b; font-size: 16px; margin: 0; font-weight: 600;">Official Financial White Paper</p>
             </div>
-            <p style="color: #94a3b8; font-size: 14px; margin: 0;">Date of Issue</p>
-            <p style="color: #334155; font-size: 16px; margin: 5px 0 0 0; font-weight: bold;">${formatDateTime(new Date())}</p>
+            <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end;">
+              <div style="border: 2px solid #10b981; color: #10b981; padding: 6px 14px; border-radius: 6px; font-weight: 900; font-size: 15px; letter-spacing: 2px; margin-bottom: 12px; background-color: #f0fdf4;">
+                ✓ SUBHAMS VERIFIED
+              </div>
+              <p style="color: #94a3b8; font-size: 14px; margin: 0;">Date of Issue</p>
+              <p style="color: #334155; font-size: 16px; margin: 5px 0 0 0; font-weight: bold;">${formatDateTime(new Date())}</p>
+            </div>
           </div>
-        </div>
 
-        <div style="display: flex; justify-content: space-between; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 25px; border-radius: 12px; border: 1px solid #cbd5e1; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
-          <div><b style="color: #64748b; font-size: 14px;">Total Received</b><br/><span style="color: #10b981; font-size: 24px; font-weight: 900;">₹${pdfIncome}</span></div>
-          <div><b style="color: #64748b; font-size: 14px;">Total Paid</b><br/><span style="color: #ef4444; font-size: 24px; font-weight: 900;">₹${pdfExpense}</span></div>
-          <div><b style="color: #64748b; font-size: 14px;">Total Pending</b><br/><span style="color: #f59e0b; font-size: 24px; font-weight: 900;">₹${pdfPending}</span></div>
-          <div style="border-left: 2px solid #cbd5e1; padding-left: 20px;"><b style="color: #64748b; font-size: 14px;">Net Balance</b><br/><span style="color: ${pdfBalance >= 0 ? '#3b82f6' : '#ef4444'}; font-size: 24px; font-weight: 900;">₹${pdfBalance}</span></div>
-        </div>
-
-        <table style="width: 100%; border-collapse: separate; border-spacing: 0 8px; text-align: left; font-size: 15px;">
-          <thead>
-            <tr style="color: #475569; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">
-              <th style="padding: 0 15px 10px 15px; border-bottom: 2px solid #e2e8f0;">Date</th>
-              <th style="padding: 0 15px 10px 15px; border-bottom: 2px solid #e2e8f0;">Title</th>
-              <th style="padding: 0 15px 10px 15px; border-bottom: 2px solid #e2e8f0;">Category</th>
-              <th style="padding: 0 15px 10px 15px; border-bottom: 2px solid #e2e8f0;">Status</th>
-              <th style="padding: 0 15px 10px 15px; border-bottom: 2px solid #e2e8f0; text-align: right;">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${transactions.map((t) => {
-                const isInc = t.type === 'income';
-                const isExp = t.type === 'expense';
-                
-                const tColor = isInc ? '#10b981' : isExp ? '#ef4444' : '#f59e0b';
-                const bgTint = isInc ? '#f0fdf4' : isExp ? '#fef2f2' : '#fffbeb';
-                const displayStatus = isInc ? 'RECEIVED' : isExp ? 'PAID' : 'PENDING';
-
-                return `
-              <tr style="background-color: ${bgTint};">
-                <td style="padding: 18px 15px; border-radius: 8px 0 0 8px; border-left: 4px solid ${tColor}; color: #475569; font-weight: 500;">
-                  ${formatDate(t.date)}
-                </td>
-                <td style="padding: 18px 15px; font-weight: 800; color: #0f172a; font-size: 16px;">${t.title}</td>
-                <td style="padding: 18px 15px;">
-                  <span style="background: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; border: 1px solid #cbd5e1; color: #475569; font-weight: bold;">${t.category || "Other"}</span>
-                </td>
-                <td style="padding: 18px 15px; font-weight: 900; color: ${tColor}; letter-spacing: 1px;">${displayStatus}</td>
-                <td style="padding: 18px 15px; font-weight: 900; text-align: right; color: ${tColor}; font-size: 16px; border-radius: 0 8px 8px 0;">₹${t.amount}</td>
-              </tr>
-            `}).join('')}
-          </tbody>
-        </table>
-        
-        <div style="margin-top: 40px; border-top: 2px dashed #cbd5e1; padding-top: 20px; text-align: center; color: #64748b;">
-          <p style="margin: 0; font-weight: bold; font-size: 14px;">Subhams Personal Money Management System</p>
-          <p style="margin: 5px 0 0 0; font-size: 12px;">Digitally generated and cryptographically secure. Engineered by  Venkata Pavan Kumar Amarthaluri.</p>
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(reportDiv);
-
-    try {
-      const canvas = await html2canvas(reportDiv, { scale: 2, useCORS: true });
-      const imgData = canvas.toDataURL("image/png");
-      const doc = new jsPDF("p", "mm", "a4");
-      const pdfWidth = doc.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      let heightLeft = pdfHeight;
-      let position = 0;
-      const pageHeight = doc.internal.pageSize.getHeight();
-
-      doc.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - pdfHeight;
-        doc.addPage();
-        doc.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pageHeight;
+          <div style="display: flex; justify-content: space-between; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 25px; border-radius: 12px; border: 1px solid #cbd5e1; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+            <div><b style="color: #64748b; font-size: 14px;">Total Received</b><br/><span style="color: #10b981; font-size: 24px; font-weight: 900;">₹${pdfIncome}</span></div>
+            <div><b style="color: #64748b; font-size: 14px;">Total Paid</b><br/><span style="color: #ef4444; font-size: 24px; font-weight: 900;">₹${pdfExpense}</span></div>
+            <div><b style="color: #64748b; font-size: 14px;">Total Pending</b><br/><span style="color: #f59e0b; font-size: 24px; font-weight: 900;">₹${pdfPending}</span></div>
+            <div style="border-left: 2px solid #cbd5e1; padding-left: 20px;"><b style="color: #64748b; font-size: 14px;">Net Balance</b><br/><span style="color: ${pdfBalance >= 0 ? '#3b82f6' : '#ef4444'}; font-size: 24px; font-weight: 900;">₹${pdfBalance}</span></div>
+          </div>
+        `;
+      } else {
+        headerHtml = `
+          <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="color: #1e293b; font-size: 22px; margin: 0;">SUBHAMS PMMS <span style="color: #94a3b8; font-size: 16px; font-weight: normal;">(Continued - Page ${i + 1})</span></h2>
+          </div>
+        `;
       }
 
-      doc.save(`Subhams_Report_${formatDate(new Date())}.pdf`);
-    } catch (error) { alert("Failed to create PDF. Please try again."); } 
-    finally { document.body.removeChild(reportDiv); setIsDownloading(false); }
+      // Build Rows smoothly
+      const rowsHtml = chunk.map((t) => {
+        const isInc = t.type === 'income';
+        const isExp = t.type === 'expense';
+        const tColor = isInc ? '#10b981' : isExp ? '#ef4444' : '#f59e0b';
+        const bgTint = isInc ? '#f0fdf4' : isExp ? '#fef2f2' : '#fffbeb';
+        const displayStatus = isInc ? 'RECEIVED' : isExp ? 'PAID' : 'PENDING';
+
+        return `
+          <tr style="background-color: ${bgTint};">
+            <td style="padding: 15px; border-radius: 8px 0 0 8px; border-left: 4px solid ${tColor}; color: #475569; font-weight: 500;">
+              ${formatDate(t.date)}
+            </td>
+            <td style="padding: 15px; font-weight: 800; color: #0f172a; font-size: 15px;">${t.title}</td>
+            <td style="padding: 15px;">
+              <span style="background: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; border: 1px solid #cbd5e1; color: #475569; font-weight: bold;">${t.category || "Other"}</span>
+            </td>
+            <td style="padding: 15px; font-weight: 900; color: ${tColor}; letter-spacing: 1px;">${displayStatus}</td>
+            <td style="padding: 15px; font-weight: 900; text-align: right; color: ${tColor}; font-size: 15px; border-radius: 0 8px 8px 0;">₹${t.amount}</td>
+          </tr>
+        `;
+      }).join('');
+
+      let footerHtml = "";
+      if (isLastPage) {
+        footerHtml = `
+          <div style="margin-top: auto; padding-top: 40px;">
+            <div style="border-top: 2px dashed #cbd5e1; padding-top: 20px; text-align: center; color: #64748b;">
+              <p style="margin: 0; font-weight: bold; font-size: 14px;">Subhams Personal Money Management System</p>
+              <p style="margin: 5px 0 0 0; font-size: 12px;">Digitally generated and cryptographically secure. Engineered by Venkata Pavan Kumar Amarthaluri.</p>
+            </div>
+          </div>
+        `;
+      }
+
+      reportDiv.innerHTML = `
+        <div style="position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column;">
+          ${headerHtml}
+          <table style="width: 100%; border-collapse: separate; border-spacing: 0 8px; text-align: left; font-size: 14px;">
+            <thead>
+              <tr style="color: #475569; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">
+                <th style="padding: 0 15px 10px 15px; border-bottom: 2px solid #e2e8f0;">Date</th>
+                <th style="padding: 0 15px 10px 15px; border-bottom: 2px solid #e2e8f0;">Title</th>
+                <th style="padding: 0 15px 10px 15px; border-bottom: 2px solid #e2e8f0;">Category</th>
+                <th style="padding: 0 15px 10px 15px; border-bottom: 2px solid #e2e8f0;">Status</th>
+                <th style="padding: 0 15px 10px 15px; border-bottom: 2px solid #e2e8f0; text-align: right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+          ${footerHtml}
+        </div>
+      `;
+
+      document.body.appendChild(reportDiv);
+
+      try {
+        const canvas = await html2canvas(reportDiv, { scale: 2, useCORS: true });
+        const imgData = canvas.toDataURL("image/png");
+        
+        if (i > 0) doc.addPage();
+        doc.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      } catch (error) { 
+        console.error("PDF Error", error);
+      } finally { 
+        document.body.removeChild(reportDiv); 
+      }
+    }
+
+    doc.save(`Subhams_Report_${formatDate(new Date())}.pdf`);
+    setIsDownloading(false); 
   };
 
   const handleSubmit = async (type) => {
@@ -512,7 +546,6 @@ function App() {
     </div>
   );
 
-  // 🟢 IF TOKEN EXISTS BUT APP IS LOCKED, SHOW THE LOCK SCREEN
   if (token && isAppLocked) return (
     <>
       <style>{globalStyles}</style>
@@ -575,7 +608,6 @@ function App() {
       <nav className="nav-bar">
         <h2 className="brand-logo" style={{ fontSize: "1.8rem" }}>Subhams</h2>
         <div style={{ display: "flex", gap: "10px" }}>
-          {/* 🟢 ENABLE APP LOCK (Only shows if they haven't locked the device yet) */}
           {localStorage.getItem("subhams_app_lock") !== "true" && (
             <button style={{ padding: "10px 15px", background: "#10b981", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }} onClick={enableAppLock}>
                <Lock size={16} /> Enable App Lock
@@ -679,10 +711,9 @@ function App() {
                 </div>
               </div>
 
-          <div className="scrollable-history" style={{ flex: 1, overflowY: "auto", maxHeight: showAllHistory ? "400px" : "auto", paddingRight: "5px" }}>
+              <div className="scrollable-history" style={{ flex: 1, overflowY: "auto", maxHeight: showAllHistory ? "400px" : "auto", paddingRight: "5px" }}>
                 {transactions.length === 0 && <p style={{ color: "#94a3b8", textAlign: "center" }}>No records found.</p>}
                 
-                {/* 🟢 LOGIC: Show all if expanded, otherwise only show the first 5 */}
                 {(showAllHistory ? transactions : transactions.slice(0, 5)).map((t) => {
                   const isInc = t.type === "income";
                   const isExp = t.type === "expense";
@@ -714,7 +745,6 @@ function App() {
                   );
                 })}
 
-                {/* 🟢 THE VIEW MORE BUTTON */}
                 {transactions.length > 5 && (
                   <div style={{ textAlign: "center", marginTop: "15px", marginBottom: "10px" }}>
                     <button 
@@ -806,7 +836,7 @@ function App() {
         </div>
       </div>
       
-    <footer style={{ 
+      <footer style={{ 
         padding: "50px 20px", 
         marginTop: "60px", 
         background: "linear-gradient(to bottom, #ffffff, #f8fafc)", 
@@ -817,7 +847,6 @@ function App() {
         alignItems: "center", 
         gap: "15px" 
       }}>
-        {/* App Badge */}
         <div style={{ 
           background: "rgba(59, 130, 246, 0.1)", 
           padding: "8px 16px", 
@@ -834,7 +863,6 @@ function App() {
           <Code size={16} /> Personal Money Management System
         </div>
 
-        {/* Developer Credit */}
         <div style={{ textAlign: "center", marginTop: "10px" }}>
           <p style={{ margin: "0", fontSize: "14px", color: "#64748b", fontWeight: "500" }}>Designed & Engineered by</p>
           <h3 style={{ margin: "8px 0", fontSize: "26px", color: "#0f172a", fontWeight: "900", letterSpacing: "-0.5px" }}>
@@ -842,9 +870,7 @@ function App() {
           </h3>
         </div>
 
-        {/* Contact & Portfolio Links */}
         <div style={{ display: "flex", gap: "15px", marginTop: "15px", flexWrap: "wrap", justifyContent: "center" }}>
-          {/* Email Button */}
           <a href="mailto:pavanvenkat63@gmail.com" style={{ 
             display: "flex", alignItems: "center", gap: "8px", 
             padding: "12px 24px", background: "white", color: "#475569", 
@@ -855,7 +881,6 @@ function App() {
             <Mail size={18} color="#f59e0b" /> pavanvenkat63@gmail.com
           </a>
 
-          {/* Other Project Button */}
           <a href="https://bhavyams-vendor-hub-vpk.vercel.app/" target="_blank" rel="noopener noreferrer" style={{ 
             display: "flex", alignItems: "center", gap: "8px", 
             padding: "12px 24px", background: "#3b82f6", color: "white", 
@@ -867,7 +892,6 @@ function App() {
           </a>
         </div>
 
-        {/* Copyright */}
         <p style={{ margin: "25px 0 0 0", fontSize: "13px", color: "#94a3b8", fontWeight: "500" }}>
           © {new Date().getFullYear()} Subhams PMMS. All Rights Reserved.
         </p>
