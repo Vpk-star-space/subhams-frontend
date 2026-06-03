@@ -107,11 +107,12 @@ function App() {
   const [email, setEmail] = useState(""); 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState(""); 
   const [otp, setOtp] = useState(""); 
   
   const [transactions, setTransactions] = useState([]);
   const [allTransactions, setAllTransactions] = useState([]); 
-  const [showAllHistory, setShowAllHistory] = useState(false); // 🟢 VIEW MORE STATE
+  const [showAllHistory, setShowAllHistory] = useState(false); 
   
   const [monthlyChartData, setMonthlyChartData] = useState([]); 
   const [insights, setInsights] = useState(null); 
@@ -133,6 +134,39 @@ function App() {
   const [interestResult, setInterestResult] = useState({});
 
   const formRef = useRef(null); 
+
+  // 🟢 ADDED: Security State Variables
+  const [failedAttempts, setFailedAttempts] = useState(() => parseInt(localStorage.getItem('localFailedAttempts') || '0', 10));
+  const [lockoutTimer, setLockoutTimer] = useState(() => {
+    const lockedUntil = localStorage.getItem('lockoutUntil');
+    if (lockedUntil) {
+      const remaining = Math.floor((parseInt(lockedUntil, 10) - Date.now()) / 1000);
+      return remaining > 0 ? remaining : 0;
+    }
+    return 0;
+  });
+
+  // 🟢 ADDED: Security Logic
+  useEffect(() => {
+    let interval;
+    if (lockoutTimer > 0) {
+      interval = setInterval(() => {
+        setLockoutTimer((prev) => {
+          if (prev <= 1) { localStorage.removeItem('lockoutUntil'); return 0; }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [lockoutTimer]);
+
+  const triggerLockout = () => {
+    const duration = 900; // 15 minutes
+    setLockoutTimer(duration);
+    localStorage.setItem('lockoutUntil', Date.now() + (duration * 1000));
+    setFailedAttempts(0);
+    localStorage.removeItem('localFailedAttempts');
+  };
 
   const refreshAuthToken = useCallback(async () => {
     if (!refreshToken || refreshToken === "null") return logout();
@@ -191,22 +225,34 @@ function App() {
     } catch (err) { alert("Unlock failed. Please try again."); } 
   };
 
-  const login = async () => {
-    if (!username || !password) return alert("Enter username and password");
+ const login = async () => {
+    if (lockoutTimer > 0) return alert("Account locked. Please wait for the timer."); // 🟢 ADDED
+    if (!username) return alert("Enter Username or Email");
     setIsServerWaking(true); 
     try {
       const res = await fetch(`${API}/auth/login`, { 
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password }) 
+        method: "POST", headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ username, password: password || "google_check" }) 
       });
       const data = await res.json();
       if (res.ok && data.accessToken) { 
+        setFailedAttempts(0); // 🟢 ADDED
+        localStorage.removeItem('localFailedAttempts');
         localStorage.setItem("token", data.accessToken); 
         localStorage.setItem("refreshToken", data.refreshToken);
         setToken(data.accessToken); 
         setRefreshToken(data.refreshToken);
-        
         if (localStorage.getItem("subhams_app_lock") === "true") setIsAppLocked(true);
-      } else { alert(data.error || "Login failed"); }
+      } else { 
+        // 🟢 ADDED: Lockout Logic
+        const newAttempts = failedAttempts + 1;
+        if (newAttempts >= 5) { triggerLockout(); }
+        else {
+          setFailedAttempts(newAttempts);
+          localStorage.setItem('localFailedAttempts', newAttempts.toString());
+          alert(`${data.error || "Login failed"}. ⚠️ ${5 - newAttempts} attempt(s) left.`);
+        }
+      }
     } catch (err) { alert("Backend server is offline."); }
     finally { setIsServerWaking(false); }
   };
@@ -248,6 +294,64 @@ function App() {
     } catch (err) { alert("Backend server is offline."); } finally { setIsServerWaking(false); }
   };
 
+const handleForgotPassword = async () => {
+    if (!email) return alert("Please enter your registered email address.");
+    setIsServerWaking(true);
+    try {
+      const res = await fetch(`${API}/auth/forgot-password`, { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ email }) 
+      });
+      
+      const data = await res.json();
+      
+      // 🟢 DEBUGGING: Check exactly what the server sends back
+      console.log("Server response:", data);
+
+      if (res.ok) {
+        alert("OTP sent! Check your email."); 
+        setAuthMode("reset_otp"); 
+      } else {
+        // 🟢 This is where the "Google Login" error from your backend will appear!
+        alert(data.error || "Failed to send OTP."); 
+      }
+    } catch (err) { 
+      // This catch block usually only triggers if the internet is down
+      console.error("Connection Error:", err);
+      alert("Connection error: Cannot reach the server."); 
+    } finally { 
+      setIsServerWaking(false); 
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!otp || !newPassword) return alert("Please enter the OTP and your new password.");
+    setIsServerWaking(true);
+    try {
+      const res = await fetch(`${API}/auth/forgot-password/reset`, { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ email, otp, newPassword }) 
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        alert("Password reset successful! Please log in."); 
+        setAuthMode("login"); 
+        setOtp(""); 
+        setNewPassword(""); 
+      } else {
+        // If the OTP is wrong or expired, stay on this screen and alert
+        alert(data.error || data.message || "Invalid OTP."); 
+      }
+    } catch (err) { 
+      alert("Server is offline."); 
+    } finally { 
+      setIsServerWaking(false); 
+    }
+  };
   const logout = () => { 
     localStorage.removeItem("token"); localStorage.removeItem("refreshToken");
     setToken(null); setRefreshToken(null);
@@ -288,7 +392,6 @@ function App() {
     const pdfPending = transactions.filter(t => t.type === "pending").reduce((a, b) => a + Number(b.amount), 0);
     const pdfBalance = pdfIncome - pdfExpense;
 
-    // 🟢 UPDATED PAGINATION: 10 items on page 1, 14 items on following pages for perfect A4 fit
     const ITEMS_PER_FIRST_PAGE = 10;
     const ITEMS_PER_NEXT_PAGE = 14;
 
@@ -317,7 +420,7 @@ function App() {
       reportDiv.style.position = "absolute"; 
       reportDiv.style.left = "-9999px"; 
       reportDiv.style.width = "800px"; 
-      reportDiv.style.minHeight = "1131px"; // Fixed A4 Aspect Ratio
+      reportDiv.style.minHeight = "1131px"; 
       reportDiv.style.padding = "40px";
       reportDiv.style.backgroundColor = "#ffffff"; 
       reportDiv.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
@@ -326,7 +429,6 @@ function App() {
       reportDiv.style.display = "flex";
       reportDiv.style.flexDirection = "column";
 
-      // Build Headers
       let headerHtml = "";
       if (isFirstPage) {
         headerHtml = `
@@ -359,7 +461,6 @@ function App() {
         `;
       }
 
-      // Build Rows smoothly
       const rowsHtml = chunk.map((t) => {
         const isInc = t.type === 'income';
         const isExp = t.type === 'expense';
@@ -553,18 +654,45 @@ function App() {
     </>
   );
 
-  if (!token) return (
+ if (!token) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", backgroundColor: "#f1f5f9", padding: "20px" }}>
       <style>{globalStyles}</style>
+
+     {/* 🟢 UPDATED: Lockout Overlay with "Unlock" path */}
+{lockoutTimer > 0 && (
+  <div style={{ position: 'fixed', top:0, left:0, width: '100vw', height: '100vh', background: 'rgba(15, 23, 42, 0.98)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', padding: '20px' }}>
+    <h1 style={{ fontSize: '3rem', marginBottom: '10px' }}>🛡️ Access Locked</h1>
+    <div style={{ fontSize: '30px', color: '#f87171', fontWeight: 'bold' }}>{Math.floor(lockoutTimer / 60)}m {lockoutTimer % 60}s</div>
+    <p style={{ margin: '20px 0', textAlign: 'center', maxWidth: '300px' }}>
+        Suspicious activity detected. Account is temporarily disabled for security.
+    </p>
+
+    {/* 🟢 THE ESCAPE HATCH: This redirects them to the Forgot Password flow */}
+    <button 
+        onClick={() => {
+            setAuthMode("forgot"); // Switches the screen to the Forgot Password mode
+            setLockoutTimer(0);    // Hides the locked screen
+            localStorage.removeItem('lockoutUntil'); // Resets the local timer
+        }}
+        style={{ padding: '12px 25px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+    >
+        Unlock via Email (Forgot Password)
+    </button>
+  </div>
+)}
       <div style={{ width: "100%", maxWidth: "400px", backgroundColor: "white", padding: "40px 25px", borderRadius: "16px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", textAlign: "center" }}>
         <h1 className="brand-logo" style={{ marginBottom: "5px", fontSize: "2.5rem" }}>SUBHAMS</h1>
-        <p style={{ color: "#64748b", marginBottom: "25px", fontWeight: "bold", fontSize: "1rem" }}>PMMS</p> 
         
         {authMode === "login" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-            <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
-            <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
-            <button style={{ padding: "15px", background: "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }} onClick={login}>Login</button>
+            {/* 🟢 NEW: Added disabled={lockoutTimer > 0} */}
+            <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="Username or Email" value={username} onChange={e => setUsername(e.target.value)} disabled={lockoutTimer > 0} />
+            <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} disabled={lockoutTimer > 0} />
+            
+            <p style={{ margin: "0", textAlign: "right", fontSize: "13px", color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("forgot")}>Forgot Password?</p>
+
+            {/* 🟢 NEW: Added disabled={lockoutTimer > 0} */}
+            <button style={{ padding: "15px", background: lockoutTimer > 0 ? "#94a3b8" : "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }} onClick={login} disabled={lockoutTimer > 0}>Login</button>
             <p style={{ fontSize: "14px", margin: "5px 0" }}>Don't have an account? <span style={{ color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("register")}>Create one here</span></p>
             <div style={{ margin: "10px 0", color: "#cbd5e1", fontSize: "14px" }}>────── OR ──────</div>
             <div style={{ display: "flex", justifyContent: "center" }}><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => alert("Google Error")} /></div>
@@ -591,6 +719,30 @@ function App() {
             <p style={{ fontSize: "14px", margin: "10px 0", cursor: "pointer" }} onClick={() => setAuthMode("register")}><span style={{ color: "#ef4444" }}>Cancel & Go Back</span></p>
           </div>
         )}
+
+        {/* 🟢 FORGOT PASSWORD REQUEST SCREEN */}
+        {authMode === "forgot" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+            <h3 style={{ color: "#ef4444", margin: "0 0 10px 0" }}>Reset Password</h3>
+            <p style={{ fontSize: "14px", color: "#64748b", margin: "0 0 5px 0" }}>Enter your registered email address to receive a secure reset code.</p>
+            <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="Email Address" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+            <button style={{ padding: "15px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", marginTop: "10px" }} onClick={handleForgotPassword}>Send Reset Code</button>
+            <p style={{ fontSize: "14px", margin: "10px 0", cursor: "pointer", color: "#64748b" }} onClick={() => setAuthMode("login")}>Back to Login</p>
+          </div>
+        )}
+
+        {/* 🟢 RESET PASSWORD VERIFICATION SCREEN */}
+        {authMode === "reset_otp" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+            <h3 style={{ color: "#ef4444", margin: "0" }}>Set New Password</h3>
+            <p style={{ fontSize: "14px", color: "#64748b", margin: "0 0 10px 0" }}>Code sent to <b>{email}</b></p>
+            <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "24px", letterSpacing: "5px", textAlign: "center", outline: "none" }} placeholder="6-Digit OTP" type="text" value={otp} onChange={e => setOtp(e.target.value)} />
+            <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} type="password" placeholder="Enter New Password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+            <button style={{ padding: "15px", background: "#10b981", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", marginTop: "10px" }} onClick={handleResetPassword}>Save & Login</button>
+            <p style={{ fontSize: "14px", margin: "10px 0", cursor: "pointer" }} onClick={() => setAuthMode("forgot")}><span style={{ color: "#ef4444" }}>Cancel</span></p>
+          </div>
+        )}
+
       </div>
     </div>
   );
