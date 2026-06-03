@@ -658,25 +658,66 @@ const handleForgotPassword = async () => {
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", backgroundColor: "#f1f5f9", padding: "20px" }}>
       <style>{globalStyles}</style>
 
-     {/* 🟢 UPDATED: Lockout Overlay with "Unlock" path */}
+{/* 🟢 UPDATED: Mobile-Optimized Lockout Overlay */}
 {lockoutTimer > 0 && (
-  <div style={{ position: 'fixed', top:0, left:0, width: '100vw', height: '100vh', background: 'rgba(15, 23, 42, 0.98)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white', padding: '20px' }}>
-    <h1 style={{ fontSize: '3rem', marginBottom: '10px' }}>🛡️ Access Locked</h1>
-    <div style={{ fontSize: '30px', color: '#f87171', fontWeight: 'bold' }}>{Math.floor(lockoutTimer / 60)}m {lockoutTimer % 60}s</div>
-    <p style={{ margin: '20px 0', textAlign: 'center', maxWidth: '300px' }}>
-        Suspicious activity detected. Account is temporarily disabled for security.
+  <div style={{ 
+    position: 'fixed', 
+    top: 0, 
+    left: 0, 
+    width: '100vw', 
+    height: '100vh', 
+    background: 'rgba(15, 23, 42, 0.98)', 
+    zIndex: 9999, 
+    display: 'flex', 
+    flexDirection: 'column', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    padding: '20px',
+    boxSizing: 'border-box',
+    textAlign: 'center'
+  }}>
+    {/* Icon with a subtle glow */}
+    <div style={{ background: "rgba(245, 158, 11, 0.1)", padding: "20px", borderRadius: "50%", marginBottom: "20px", border: "1px solid rgba(245, 158, 11, 0.2)" }}>
+        <Lock size={48} color="#f59e0b" />
+    </div>
+
+    {/* Responsive Title */}
+    <h1 style={{ fontSize: 'clamp(1.5rem, 6vw, 2.5rem)', color: 'white', marginBottom: '10px' }}>Security Checkpoint</h1>
+    
+    {/* Countdown Timer */}
+    <div style={{ fontSize: '24px', color: '#fbbf24', fontWeight: 'bold', margin: '10px 0' }}>
+       Access restored in: {Math.floor(lockoutTimer / 60)}m {lockoutTimer % 60}s
+    </div>
+
+    {/* Friendly & Informative Message */}
+    <p style={{ margin: '20px 0', textAlign: 'center', maxWidth: '320px', color: '#cbd5e1', lineHeight: '1.5' }}>
+       We've temporarily limited access after multiple failed attempts. 
+       <br/><br/>
+       <strong>If this was you, please verify your identity to regain access immediately.</strong>
     </p>
 
-    {/* 🟢 THE ESCAPE HATCH: This redirects them to the Forgot Password flow */}
+    {/* Escape Hatch Button */}
     <button 
         onClick={() => {
-            setAuthMode("forgot"); // Switches the screen to the Forgot Password mode
-            setLockoutTimer(0);    // Hides the locked screen
-            localStorage.removeItem('lockoutUntil'); // Resets the local timer
+            setAuthMode("forgot"); // Switches to Forgot Password flow
+            setLockoutTimer(0);    // Closes the overlay
+            localStorage.removeItem('lockoutUntil'); 
         }}
-        style={{ padding: '12px 25px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+        style={{ 
+            padding: '14px 28px', 
+            background: '#3b82f6', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: '12px', 
+            cursor: 'pointer', 
+            fontWeight: 'bold',
+            fontSize: '16px',
+            width: '100%',
+            maxWidth: '300px',
+            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' 
+        }}
     >
-        Unlock via Email (Forgot Password)
+        Unlock via Email
     </button>
   </div>
 )}
