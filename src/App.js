@@ -5,9 +5,6 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas"; 
 import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code } from 'lucide-react'; 
 
-// 🛠️ ==========================================
-// 🛠️ MAINTENANCE MODE SETTINGS (MASTER CONTROL)
-// 🛠️ ==========================================
 const isMaintenanceMode = false; 
 const targetRestoreTime = "02-06-2026 at 10:00 AM"; 
 const API = process.env.REACT_APP_BACKEND_URL || "https://subhams-backend.onrender.com/api";
@@ -135,7 +132,6 @@ function App() {
 
   const formRef = useRef(null); 
 
-  // 🟢 ADDED: Security State Variables
   const [failedAttempts, setFailedAttempts] = useState(() => parseInt(localStorage.getItem('localFailedAttempts') || '0', 10));
   const [lockoutTimer, setLockoutTimer] = useState(() => {
     const lockedUntil = localStorage.getItem('lockoutUntil');
@@ -146,7 +142,6 @@ function App() {
     return 0;
   });
 
-  // 🟢 ADDED: Security Logic
   useEffect(() => {
     let interval;
     if (lockoutTimer > 0) {
@@ -161,7 +156,7 @@ function App() {
   }, [lockoutTimer]);
 
   const triggerLockout = () => {
-    const duration = 900; // 15 minutes
+    const duration = 900; 
     setLockoutTimer(duration);
     localStorage.setItem('lockoutUntil', Date.now() + (duration * 1000));
     setFailedAttempts(0);
@@ -225,36 +220,84 @@ function App() {
     } catch (err) { alert("Unlock failed. Please try again."); } 
   };
 
- const login = async () => {
-    if (lockoutTimer > 0) return alert("Account locked. Please wait for the timer."); // 🟢 ADDED
-    if (!username) return alert("Enter Username or Email");
+const login = async () => {
+    if (lockoutTimer > 0) return alert("Account locked. Please wait for the timer.");
+    if (!username || !password) return alert("Please enter both Username and Password.");
+    
     setIsServerWaking(true); 
     try {
+      console.log("\n=== 🖥️ FRONTEND DEBUG TRACKER START ===");
+      console.log("1. Sending login request to server...");
+
       const res = await fetch(`${API}/auth/login`, { 
-        method: "POST", headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify({ username, password: password || "google_check" }) 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ username, password }) 
       });
+
+      console.log("2. Server responded with Status Code:", res.status);
+
+      // Catch Express Rate Limiter if it sends plain text
+      const contentType = res.headers.get("content-type");
+      if (res.status === 429 && (!contentType || !contentType.includes("json"))) {
+         const textMsg = await res.text();
+         console.log("❌ Firewall Block (Text):", textMsg);
+         console.log("=== 🖥️ FRONTEND DEBUG TRACKER END ===\n");
+         return alert("⚠️ Server Firewall: You clicked login too many times. Please wait a few minutes.");
+      }
+      
       const data = await res.json();
+      console.log("3. Data received from server:", data);
+      
       if (res.ok && data.accessToken) { 
-        setFailedAttempts(0); // 🟢 ADDED
+        console.log("✅ SUCCESS: Logging user in!");
+        setFailedAttempts(0);
         localStorage.removeItem('localFailedAttempts');
         localStorage.setItem("token", data.accessToken); 
         localStorage.setItem("refreshToken", data.refreshToken);
         setToken(data.accessToken); 
         setRefreshToken(data.refreshToken);
         if (localStorage.getItem("subhams_app_lock") === "true") setIsAppLocked(true);
+        console.log("=== 🖥️ FRONTEND DEBUG TRACKER END ===\n");
+
       } else { 
-        // 🟢 ADDED: Lockout Logic
+        console.log("❌ FAILED: Server rejected login.");
+        
+        // Scenario A: The Database specifically locked the user account
+        if (res.status === 429 && data.error && data.error.includes("Account locked")) {
+          console.log("🔒 Action: Triggering Red Shield Lockout Overlay.");
+          triggerLockout();
+          console.log("=== 🖥️ FRONTEND DEBUG TRACKER END ===\n");
+          return;
+        }
+
+        // Scenario B: The Express Rate Limiter blocked the IP (testing too fast)
+        if (res.status === 429) {
+          console.log("⏳ Action: Network cooldown warning.");
+          console.log("=== 🖥️ FRONTEND DEBUG TRACKER END ===\n");
+          return alert(`⚠️ Network Firewall: ${data.error || data.message || "Too many attempts. Wait a few minutes before trying again."}`);
+        }
+
+        // Scenario C: Standard wrong password
         const newAttempts = failedAttempts + 1;
-        if (newAttempts >= 5) { triggerLockout(); }
-        else {
+        console.log(`⚠️ Action: Incrementing bad attempts. Now at ${newAttempts}/5`);
+        
+        if (newAttempts >= 5) { 
+          console.log("🔒 Action: 5 bad attempts reached. Triggering Red Shield.");
+          triggerLockout(); 
+        } else {
           setFailedAttempts(newAttempts);
           localStorage.setItem('localFailedAttempts', newAttempts.toString());
           alert(`${data.error || "Login failed"}. ⚠️ ${5 - newAttempts} attempt(s) left.`);
         }
+        console.log("=== 🖥️ FRONTEND DEBUG TRACKER END ===\n");
       }
-    } catch (err) { alert("Backend server is offline."); }
-    finally { setIsServerWaking(false); }
+    } catch (err) { 
+      console.error("❌ FRONTEND CATCH ERROR:", err);
+      alert("Backend server is offline or unreachable."); 
+    } finally { 
+      setIsServerWaking(false); 
+    }
   };
 
   const handleGoogleSuccess = async (credentialResponse) => {
@@ -306,30 +349,24 @@ const handleForgotPassword = async () => {
       
       const data = await res.json();
       
-      // 🟢 DEBUGGING: Check exactly what the server sends back
-      console.log("Server response:", data);
-
       if (res.ok) {
         alert("OTP sent! Check your email."); 
         setAuthMode("reset_otp"); 
       } else {
-        // 🟢 This is where the "Google Login" error from your backend will appear!
         alert(data.error || "Failed to send OTP."); 
       }
     } catch (err) { 
-      // This catch block usually only triggers if the internet is down
-      console.error("Connection Error:", err);
       alert("Connection error: Cannot reach the server."); 
     } finally { 
       setIsServerWaking(false); 
     }
   };
 
-  const handleResetPassword = async () => {
+const handleResetPassword = async () => {
     if (!otp || !newPassword) return alert("Please enter the OTP and your new password.");
     setIsServerWaking(true);
     try {
-      const res = await fetch(`${API}/auth/forgot-password/reset`, { 
+      const res = await fetch(`${API}/auth/reset-password`, { 
         method: "POST", 
         headers: { "Content-Type": "application/json" }, 
         body: JSON.stringify({ email, otp, newPassword }) 
@@ -342,8 +379,15 @@ const handleForgotPassword = async () => {
         setAuthMode("login"); 
         setOtp(""); 
         setNewPassword(""); 
+        setPassword(""); 
+
+        // 🟢 ADD THESE 4 LINES TO DROP THE RED SHIELD!
+        setLockoutTimer(0);
+        localStorage.removeItem('lockoutUntil');
+        setFailedAttempts(0);
+        localStorage.removeItem('localFailedAttempts');
+
       } else {
-        // If the OTP is wrong or expired, stay on this screen and alert
         alert(data.error || data.message || "Invalid OTP."); 
       }
     } catch (err) { 
@@ -352,6 +396,7 @@ const handleForgotPassword = async () => {
       setIsServerWaking(false); 
     }
   };
+
   const logout = () => { 
     localStorage.removeItem("token"); localStorage.removeItem("refreshToken");
     setToken(null); setRefreshToken(null);
@@ -676,31 +721,26 @@ const handleForgotPassword = async () => {
     boxSizing: 'border-box',
     textAlign: 'center'
   }}>
-    {/* Icon with a subtle glow */}
     <div style={{ background: "rgba(245, 158, 11, 0.1)", padding: "20px", borderRadius: "50%", marginBottom: "20px", border: "1px solid rgba(245, 158, 11, 0.2)" }}>
         <Lock size={48} color="#f59e0b" />
     </div>
 
-    {/* Responsive Title */}
     <h1 style={{ fontSize: 'clamp(1.5rem, 6vw, 2.5rem)', color: 'white', marginBottom: '10px' }}>Security Checkpoint</h1>
     
-    {/* Countdown Timer */}
     <div style={{ fontSize: '24px', color: '#fbbf24', fontWeight: 'bold', margin: '10px 0' }}>
        Access restored in: {Math.floor(lockoutTimer / 60)}m {lockoutTimer % 60}s
     </div>
 
-    {/* Friendly & Informative Message */}
     <p style={{ margin: '20px 0', textAlign: 'center', maxWidth: '320px', color: '#cbd5e1', lineHeight: '1.5' }}>
        We've temporarily limited access after multiple failed attempts. 
        <br/><br/>
        <strong>If this was you, please verify your identity to regain access immediately.</strong>
     </p>
 
-    {/* Escape Hatch Button */}
     <button 
         onClick={() => {
-            setAuthMode("forgot"); // Switches to Forgot Password flow
-            setLockoutTimer(0);    // Closes the overlay
+            setAuthMode("forgot");
+            setLockoutTimer(0);
             localStorage.removeItem('lockoutUntil'); 
         }}
         style={{ 
@@ -726,13 +766,11 @@ const handleForgotPassword = async () => {
         
         {authMode === "login" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-            {/* 🟢 NEW: Added disabled={lockoutTimer > 0} */}
             <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="Username or Email" value={username} onChange={e => setUsername(e.target.value)} disabled={lockoutTimer > 0} />
             <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} disabled={lockoutTimer > 0} />
             
             <p style={{ margin: "0", textAlign: "right", fontSize: "13px", color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("forgot")}>Forgot Password?</p>
 
-            {/* 🟢 NEW: Added disabled={lockoutTimer > 0} */}
             <button style={{ padding: "15px", background: lockoutTimer > 0 ? "#94a3b8" : "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }} onClick={login} disabled={lockoutTimer > 0}>Login</button>
             <p style={{ fontSize: "14px", margin: "5px 0" }}>Don't have an account? <span style={{ color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("register")}>Create one here</span></p>
             <div style={{ margin: "10px 0", color: "#cbd5e1", fontSize: "14px" }}>────── OR ──────</div>
@@ -761,7 +799,6 @@ const handleForgotPassword = async () => {
           </div>
         )}
 
-        {/* 🟢 FORGOT PASSWORD REQUEST SCREEN */}
         {authMode === "forgot" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             <h3 style={{ color: "#ef4444", margin: "0 0 10px 0" }}>Reset Password</h3>
@@ -772,7 +809,6 @@ const handleForgotPassword = async () => {
           </div>
         )}
 
-        {/* 🟢 RESET PASSWORD VERIFICATION SCREEN */}
         {authMode === "reset_otp" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             <h3 style={{ color: "#ef4444", margin: "0" }}>Set New Password</h3>
