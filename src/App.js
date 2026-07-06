@@ -1110,7 +1110,7 @@ const handleResetPassword = async () => {
             <Mail size={18} color="#f59e0b" /> pavanvenkat63@gmail.com
           </a>
 
-          <a href="https://bhavyams-vendor-hub-vpk.vercel.app/" target="_blank" rel="noopener noreferrer" style={{ 
+          <a href="https://bhavyams.subhamsnetworks.in/" target="_blank" rel="noopener noreferrer" style={{ 
             display: "flex", alignItems: "center", gap: "8px", 
             padding: "12px 24px", background: "#3b82f6", color: "white", 
             borderRadius: "12px", textDecoration: "none", fontWeight: "700", 
