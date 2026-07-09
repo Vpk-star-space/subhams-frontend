@@ -17,7 +17,7 @@ const InstallPopup = () => {
   
 
     if (window.deferredInstallPrompt) {
-      console.log("✅ [Debug 3] Activating Install Button from Window Trap.");
+
       setIsInstallable(true);
     }
 
