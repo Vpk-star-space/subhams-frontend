@@ -133,7 +133,7 @@ const InstallPopup = () => {
           }}
         >
           <span style={{ fontSize: '18px', animation: 'iconFloat 2s infinite ease-in-out', display: 'inline-block' }}>
-            Share app↗️
+            ↗️
           </span>
         </button>
       </div>
