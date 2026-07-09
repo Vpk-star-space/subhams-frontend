@@ -4,6 +4,8 @@ import { GoogleLogin } from '@react-oauth/google';
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas"; 
 import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code } from 'lucide-react'; 
+import InstallPopup from './components/InstallPopup';
+
 
 const isMaintenanceMode = false; 
 const targetRestoreTime = "02-06-2026 at 10:00 AM"; 
@@ -47,6 +49,7 @@ const MaintenanceScreen = () => {
     return (
         <div style={smStyles.container}>
             <div style={smStyles.card}>
+           
                 <h1 style={smStyles.brandTitle}>SUBHAMS <span style={{color: '#f59e0b'}}>PMMS</span></h1>
                 <div style={smStyles.secureBadge}>🔒 SECURE MAINTENANCE / సురక్షిత నిర్వహణ</div>
                 <p style={smStyles.subtitle}>
@@ -68,6 +71,7 @@ const MaintenanceScreen = () => {
                     <strong>- Venkata Pavan Kumar Amarthaluri</strong>
                 </p>
             </div>
+              
         </div>
     );
 };
@@ -764,6 +768,7 @@ const handleResetPassword = async () => {
       <div style={{ width: "100%", maxWidth: "400px", backgroundColor: "white", padding: "40px 25px", borderRadius: "16px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", textAlign: "center" }}>
         <h1 className="brand-logo" style={{ marginBottom: "5px", fontSize: "2.5rem" }}>SUBHAMS</h1>
         
+        
         {authMode === "login" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="Username or Email" value={username} onChange={e => setUsername(e.target.value)} disabled={lockoutTimer > 0} />
@@ -775,6 +780,7 @@ const handleResetPassword = async () => {
             <p style={{ fontSize: "14px", margin: "5px 0" }}>Don't have an account? <span style={{ color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("register")}>Create one here</span></p>
             <div style={{ margin: "10px 0", color: "#cbd5e1", fontSize: "14px" }}>────── OR ──────</div>
             <div style={{ display: "flex", justifyContent: "center" }}><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => alert("Google Error")} /></div>
+         
           </div>
         )}
 
@@ -821,7 +827,9 @@ const handleResetPassword = async () => {
         )}
 
       </div>
+     <InstallPopup />
     </div>
+    
   );
 
   return (
@@ -834,8 +842,10 @@ const handleResetPassword = async () => {
         </div>
       </div>
       
+      
       <nav className="nav-bar">
         <h2 className="brand-logo" style={{ fontSize: "1.8rem" }}>Subhams</h2>
+        
         <div style={{ display: "flex", gap: "10px" }}>
           {localStorage.getItem("subhams_app_lock") !== "true" && (
             <button style={{ padding: "10px 15px", background: "#10b981", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }} onClick={enableAppLock}>
@@ -872,6 +882,7 @@ const handleResetPassword = async () => {
               <h4 style={{ margin: "0 0 8px 0" }}>💡 Subhams Insights:</h4>
               <div style={{ lineHeight: "1.5" }}>{smartMsg} <br /><small style={{ opacity: 0.8 }}>{smartMsgTe}</small></div>
             </div>
+            
           </div>
         )}
 
@@ -1063,6 +1074,7 @@ const handleResetPassword = async () => {
             </div>
           )}
         </div>
+
       </div>
       
       <footer style={{ 
@@ -1090,6 +1102,7 @@ const handleResetPassword = async () => {
           textTransform: "uppercase"
         }}>
           <Code size={16} /> Personal Money Management System
+     
         </div>
 
         <div style={{ textAlign: "center", marginTop: "10px" }}>
@@ -1181,8 +1194,11 @@ const handleResetPassword = async () => {
             borderRadius: '10px',
             animation: 'line-breathe 3s ease-in-out infinite' 
         }}></div>
+        
       </div>
+   <InstallPopup />
     </div>
+    
   );
 }
 

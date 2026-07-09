@@ -3,7 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
-    
+    <link rel="icon" type="image/png" href="/pmms-192.png" />
+<link rel="apple-touch-icon" href="/pmms-192.png" />
+
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#0a0a0a" />
     <!-- 1. STRICT SEARCH ENGINE TITLES, KEYWORDS & BRAND DESCRIPTION -->
     <title>Subhams PMMS | Venkata Pavan Kumar Amarthaluri</title>
     <meta name="description" content="Subhams PMMS - Secure financial tracking infrastructure engineered by Venkata Pavan Kumar Amarthaluri under the Subhams Networks ecosystem." />
@@ -66,5 +70,19 @@
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+    <!-- Register the PWA Service Worker -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('SW registered: ', registration);
+          }).catch(registrationError => {
+            console.log('SW registration failed: ', registrationError);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>
   </body>
 </html>
