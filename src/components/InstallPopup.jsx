@@ -10,13 +10,11 @@ const InstallPopup = () => {
   // Check if the user has already installed the app
   const isInstalled = typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches;
 
-  // 🐛 DEBUG LOG 1: Check if the browser thinks it is already installed
-  console.log("📱 [Debug 1] Is App running in Standalone mode (Installed)?", isInstalled);
+
 
   // 1. Capture the Chrome Install Event
   useEffect(() => {
-    // 🐛 DEBUG LOG 2: Check if the HTML script caught the event before React loaded
-    console.log("🔍 [Debug 2] React loaded. Checking window trap:", window.deferredInstallPrompt ? "EVENT FOUND! 🟢" : "Nothing yet 🔴");
+  
 
     if (window.deferredInstallPrompt) {
       console.log("✅ [Debug 3] Activating Install Button from Window Trap.");
@@ -25,8 +23,7 @@ const InstallPopup = () => {
 
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
-      // 🐛 DEBUG LOG 4: Did Chrome just fire the event right now?
-      console.log("🚨 [Debug 4] CHROME JUST FIRED 'beforeinstallprompt'! Catching it live.");
+  
       window.deferredInstallPrompt = e; 
       setIsInstallable(true);
     };
@@ -42,7 +39,7 @@ const InstallPopup = () => {
     let timeoutId;
     const startLoop = () => {
       timeoutId = setTimeout(() => {
-        console.log("⏱️ [Debug 5] Timer finished. Showing Popup.");
+       
         setShowPopup(true); 
 
         setTimeout(() => {
@@ -63,7 +60,7 @@ const InstallPopup = () => {
   const handleInstallClick = async () => {
     const promptEvent = window.deferredInstallPrompt; 
     
-    console.log("🖱️ [Debug 6] Install Button Clicked! promptEvent status:", promptEvent ? "Ready" : "Missing");
+ 
 
     if (!promptEvent) {
       alert("Browser Security: To install securely, tap your browser menu (three dots) and select 'Add to Home screen' or 'Install App'.");
@@ -72,7 +69,7 @@ const InstallPopup = () => {
     
     promptEvent.prompt();
     const { outcome } = await promptEvent.userChoice;
-    console.log("👤 [Debug 7] User choice outcome:", outcome);
+
     
     if (outcome === 'accepted') {
       setIsInstallable(false);
