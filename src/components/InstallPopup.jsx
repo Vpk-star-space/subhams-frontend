@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
+
 // 🎛️ MASTER TOGGLE: Set to true to enable the recurring premium popup
 const ENABLE_INSTALL_POPUP = true; 
 
@@ -10,17 +11,23 @@ const InstallPopup = () => {
   // Check if the user has already installed the app
   const isInstalled = typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches;
 
-  // 1. Capture the Chrome Install Event
+// 1. Capture the Chrome Install Event
   useEffect(() => {
+    // 🚀 THIS IS THE MISSING CHECK! It looks for the HTML script above.
+    if (window.deferredInstallPrompt) {
+      setIsInstallable(true);
+    }
+
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       window.deferredInstallPrompt = e; 
       setIsInstallable(true);
     };
+    
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
-
+  
   // 2. RECURRING TIMING LOGIC (Wait 10s -> Show 16s -> Loop)
   useEffect(() => {
     if (!ENABLE_INSTALL_POPUP || isInstalled) return;
