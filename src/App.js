@@ -5,6 +5,7 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas"; 
 import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code, User, Bell, Check, X } from 'lucide-react'; 
 import InstallPopup from './components/InstallPopup';
+import AdminCommandCenter from './components/AdminCommandCenter';
 
 const isMaintenanceMode = false; 
 const targetRestoreTime = "02-06-2026 at 10:00 AM"; 
@@ -112,8 +113,8 @@ function App() {
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [refreshToken, setRefreshToken] = useState(localStorage.getItem("refreshToken"));
   
-  // 🟢 SMART PROFILE STATE
-  const [userProfile, setUserProfile] = useState(() => JSON.parse(localStorage.getItem('pmms_user') || '{"username":"","email":""}'));
+  // 🟢 SMART PROFILE & LANGUAGE STATE
+  const [userProfile, setUserProfile] = useState(() => JSON.parse(localStorage.getItem('pmms_user') || '{"username":"","email":"","preferred_language":"en"}'));
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [editName, setEditName] = useState("");
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -148,6 +149,20 @@ function App() {
   const [interestResult, setInterestResult] = useState({});
 
   const formRef = useRef(null); 
+  const [isAdminView, setIsAdminView] = useState(false);
+
+  // 🟢 BUG FIX: Verify actual browser push subscription state on mount and sync state
+  useEffect(() => {
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.pushManager.getSubscription().then(sub => {
+          if (sub) {
+            setPushEnabled(true);
+          }
+        });
+      });
+    }
+  }, []);
 
   const [failedAttempts, setFailedAttempts] = useState(() => parseInt(localStorage.getItem('localFailedAttempts') || '0', 10));
   const [lockoutTimer, setLockoutTimer] = useState(() => {
@@ -262,7 +277,7 @@ function App() {
         localStorage.setItem("token", data.accessToken); 
         localStorage.setItem("refreshToken", data.refreshToken);
 
-        const profileData = { username: data.user?.username || username, email: data.user?.email || email };
+        const profileData = { username: data.user?.username || username, email: data.user?.email || email, preferred_language: data.user?.preferred_language || 'en' };
         localStorage.setItem("pmms_user", JSON.stringify(profileData));
         setUserProfile(profileData);
 
@@ -304,7 +319,7 @@ function App() {
       if (res.ok) {
         localStorage.setItem("token", data.accessToken); localStorage.setItem("refreshToken", data.refreshToken);
         
-        const profileData = { username: data.user?.username || "Google User", email: data.user?.email || "" };
+        const profileData = { username: data.user?.username || "Google User", email: data.user?.email || "", preferred_language: data.user?.preferred_language || 'en' };
         localStorage.setItem("pmms_user", JSON.stringify(profileData));
         setUserProfile(profileData);
 
@@ -363,7 +378,7 @@ function App() {
 
   const logout = () => { 
     localStorage.removeItem("token"); localStorage.removeItem("refreshToken"); localStorage.removeItem("pmms_user");
-    setToken(null); setRefreshToken(null); setUserProfile({username:"", email:""});
+    setToken(null); setRefreshToken(null); setUserProfile({username:"", email:"", preferred_language: "en"});
     setTransactions([]); setAllTransactions([]); setMonthlyChartData([]); setInsights(null); 
     setAuthMode("login");
   };
@@ -390,6 +405,27 @@ function App() {
       }
   };
 
+  const updateLanguagePreference = async (lang) => {
+      try {
+          const res = await fetch(`${API}/notifications/language`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ lang })
+          });
+          if (res.ok) {
+              const updated = { ...userProfile, preferred_language: lang };
+              setUserProfile(updated);
+              localStorage.setItem("pmms_user", JSON.stringify(updated));
+              alert(lang === 'te' ? "✅ భాష విజయవంతంగా తెలుగుకు మార్చబడింది!" : "✅ Language updated to English!");
+          } else {
+              alert("Failed to update language.");
+          }
+      } catch (err) {
+          alert("Network error.");
+      }
+  };
+
+  // 🟢 SETUP PUSH NOTIFICATIONS USING PROFILE LANGUAGE SETTING
   const setupPushNotifications = async () => {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
           alert("Push notifications are not supported by your browser.");
@@ -415,14 +451,30 @@ function App() {
           });
 
           setPushEnabled(true);
-          alert("✅ Notifications Enabled! You will now receive alerts even when the app is closed.");
+          alert(userProfile.preferred_language === 'te' ? "✅ నోటిఫికేషన్‌లు ప్రారంభించబడ్డాయి!" : "✅ Notifications Enabled! Welcome alert sent.");
       } catch (error) {
           console.error("Error setting up push notifications:", error);
           alert("Failed to enable notifications. Ensure your site uses HTTPS.");
       }
   };
 
-  // 🟢 FIX: Added the /auth/me fetch to instantly sync your name with the database when the app loads!
+  // 🟢 TURN OFF / SILENT NOTIFICATIONS (Unsubscribes so banner shows again)
+  const disablePushNotifications = async () => {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+      try {
+          const registration = await navigator.serviceWorker.ready;
+          const subscription = await registration.pushManager.getSubscription();
+          if (subscription) {
+              await subscription.unsubscribe();
+          }
+          setPushEnabled(false);
+          alert("🔕 Notifications turned off. Banner is now visible again.");
+      } catch (error) {
+          console.error("Error disabling push notifications:", error);
+          alert("Failed to turn off notifications.");
+      }
+  };
+
   const fetchAllData = useCallback(async () => {
     if (!token || token === "null" || isMaintenanceMode || isAppLocked) { setIsServerWaking(false); return; }
     setIsServerWaking(true);
@@ -433,7 +485,7 @@ function App() {
         fetch(`${API}/transactions`, { headers }), 
         fetch(`${API}/transactions/monthly`, { headers }), 
         fetch(`${API}/transactions/insights`, { headers }),
-        fetch(`${API}/auth/me`, { headers }) // 🟢 NEW: Grabs your real name from the backend!
+        fetch(`${API}/auth/me`, { headers }) 
       ]);
 
       if (tRes.status === 401 || tRes.status === 403) { 
@@ -442,7 +494,6 @@ function App() {
         return; 
       }
 
-      // 🟢 Update the profile permanently in the app memory
       if (pRes.ok) {
          const pData = await pRes.json();
          if (pData.user) {
@@ -450,6 +501,12 @@ function App() {
              localStorage.setItem("pmms_user", JSON.stringify(pData.user));
          }
       }
+
+      // 🟢 Trigger lazy behavior-based smart notification evaluation on app sync
+      fetch(`${API}/notifications/check-behavior`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      }).catch(err => console.error("Behavior check error:", err));
 
       const tData = await tRes.json(); const mData = await mRes.json(); const iData = await iRes.json();
       if (Array.isArray(tData)) { setTransactions(tData); setAllTransactions(tData); }
@@ -715,6 +772,11 @@ function App() {
 
   if (isMaintenanceMode) return <MaintenanceScreen />;
 
+  // 🟢 ROUTING: ADMIN COMMAND CENTER VIEW
+  if (isAdminView) {
+      return <AdminCommandCenter token={token} onBack={() => setIsAdminView(false)} />;
+  }
+
   if (isServerWaking && !token) return ( 
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", backgroundColor: "#f8fafc", padding: "20px" }}>
       <style>
@@ -858,18 +920,30 @@ function App() {
         <h2 className="brand-logo" style={{ fontSize: "1.8rem" }}>Subhams</h2>
         
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          
+          {/* 🟢 SECURE ADMIN BUTTON (Only shows for your email) */}
+          {userProfile.email === 'pavanvenkat63@gmail.com' && (
+              <button 
+                  style={{ padding: "8px 14px", background: "#f59e0b", color: "#0f172a", border: "none", borderRadius: "8px", fontWeight: "900", cursor: "pointer", fontSize: "12px", boxShadow: "0 2px 5px rgba(245, 158, 11, 0.4)" }} 
+                  onClick={() => setIsAdminView(true)}
+              >
+                  ⚙️ Admin
+              </button>
+          )}
+
+          {/* 🟢 CLEAN MINIMALIST USER BADGE (No text underneath, profile name is inside the modal) */}
           <div 
             onClick={() => { setEditName(userProfile.username); setShowProfileModal(true); }}
-            style={{ display: "flex", alignItems: "center", gap: "10px", background: "rgba(255, 255, 255, 0.1)", padding: "6px 14px", borderRadius: "30px", cursor: "pointer", border: "1px solid rgba(255,255,255,0.2)", transition: "0.2s" }}
+            style={{ 
+              width: "38px", height: "38px", borderRadius: "50%", background: "linear-gradient(135deg, #f59e0b, #fbbf24)", 
+              display: "flex", alignItems: "center", justifyContent: "center", 
+              fontWeight: "900", color: "#0f172a", fontSize: "18px", textTransform: "uppercase",
+              cursor: "pointer", border: "2px solid #ffffff", boxShadow: "0 4px 10px rgba(0,0,0,0.1)", transition: "0.2s"
+            }}
           >
-            <div style={{ width: "26px", height: "26px", borderRadius: "50%", background: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", color: "#0f172a", fontSize: "14px" }}>
-                {userProfile.username ? userProfile.username.charAt(0).toUpperCase() : <User size={14}/>}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: "12px", fontWeight: "bold", lineHeight: "1" }}>{userProfile.username || "My Account"}</span>
-                <span style={{ fontSize: "9px", color: "#94a3b8" }}>Settings & Alerts</span>
-            </div>
+              {userProfile.username ? userProfile.username.charAt(0) : <User size={18}/>}
           </div>
+
           <button style={{ padding: "10px", background: "transparent", color: "#ef4444", border: "1px solid #ef4444", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }} onClick={logout}>Exit</button>
         </div>
       </nav>
@@ -905,19 +979,46 @@ function App() {
                         <Check size={18}/> Save Name
                     </button>
 
+                    {/* 🟢 LANGUAGE PREFERENCE SELECTOR */}
+                    <div>
+                        <label style={{ fontSize: "12px", fontWeight: "bold", color: "#3b82f6", marginBottom: "5px", display: "block" }}>Notification Language / భాష</label>
+                        <select 
+                            value={userProfile.preferred_language || 'en'} 
+                            onChange={(e) => updateLanguagePreference(e.target.value)}
+                            style={{ width: "100%", padding: "12px 15px", borderRadius: "8px", border: "1px solid #93c5fd", fontSize: "14px", outline: "none", color: "#0f172a", fontWeight: "bold", background: "white" }}
+                        >
+                            <option value="en">English</option>
+                            <option value="te">తెలుగు (Telugu)</option>
+                        </select>
+                    </div>
+
                     <hr style={{ border: "0", borderTop: "1px solid #e2e8f0", margin: "10px 0" }} />
 
                     <div>
                         <h3 style={{ margin: "0 0 10px 0", fontSize: "16px", color: "#0f172a" }}>Smart Alerts</h3>
-                        <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 15px 0", lineHeight: "1.4" }}>Enable background push notifications to receive real-time financial alerts directly to your device, even when the app is closed.</p>
+                        <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 15px 0", lineHeight: "1.4" }}>Receive real-time budget and transaction reminders based on your preferred language.</p>
                         
-                        <button 
-                            onClick={setupPushNotifications} 
-                            disabled={pushEnabled}
-                            style={{ width: "100%", padding: "12px", background: pushEnabled ? "#10b981" : "#f59e0b", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: pushEnabled ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", boxShadow: pushEnabled ? "none" : "0 4px 10px rgba(245, 158, 11, 0.3)" }}
-                        >
-                            <Bell size={18}/> {pushEnabled ? "Notifications Active" : "Enable Push Notifications"}
-                        </button>
+                        {/* 🟢 CONDITIONAL NOTIFICATION TOGGLE (Active vs Turn Off / Show Banner) */}
+                        {pushEnabled ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#f0fdf4", padding: "10px", borderRadius: "8px", color: "#10b981", fontWeight: "bold", fontSize: "13px" }}>
+                                    <Bell size={16} /> Notifications Active 🟢
+                                </div>
+                                <button 
+                                    onClick={disablePushNotifications} 
+                                    style={{ width: "100%", padding: "10px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "13px" }}
+                                >
+                                    Turn Off Notifications (Show Banner Again)
+                                </button>
+                            </div>
+                        ) : (
+                            <button 
+                                onClick={setupPushNotifications} 
+                                style={{ width: "100%", padding: "12px", background: "#f59e0b", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", boxShadow: "0 4px 10px rgba(245, 158, 11, 0.3)" }}
+                            >
+                                <Bell size={18}/> Enable Push Notifications
+                            </button>
+                        )}
                     </div>
 
                     {localStorage.getItem("subhams_app_lock") !== "true" && (
@@ -957,6 +1058,19 @@ function App() {
                 Here is your current financial overview.
             </p>
         </div>
+
+        {/* 🔔 SMART NOTIFICATION BANNER (Hides if already enabled) */}
+        {!pushEnabled && (
+            <div style={{ background: "linear-gradient(135deg, #2563eb, #1e3a8a)", borderRadius: "16px", padding: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "25px", color: "white", boxShadow: "0 10px 25px rgba(37, 99, 235, 0.25)" }}>
+                <div>
+                    <h3 style={{ margin: "0 0 5px 0", fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}><Bell size={18} color="#fcd34d" /> Enable Smart Alerts</h3>
+                    <p style={{ margin: 0, fontSize: "13px", color: "#bfdbfe", maxWidth: "80%" }}>Get critical budget warnings and updates even when the app is closed.</p>
+                </div>
+                <button onClick={setupPushNotifications} style={{ background: "white", color: "#1e3a8a", border: "none", padding: "10px 16px", borderRadius: "8px", fontWeight: "bold", fontSize: "13px", cursor: "pointer", whiteSpace: "nowrap" }}>
+                    Enable
+                </button>
+            </div>
+        )}
 
         {/* Dashboard Grid */}
         <div className="dashboard-grid">
@@ -1285,7 +1399,6 @@ const smStyles = {
     subtitle: { color: '#cbd5e1', fontSize: '16px', lineHeight: '1.6', margin: '0 0 30px 0' },
     timePanelContainer: { display: 'flex', flexDirection: window.innerWidth < 500 ? 'column' : 'row', width: '100%', gap: '15px', marginBottom: '30px' },
     liveTimeBox: { flex: 1, backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '15px', borderTop: '4px solid #f59e0b' },
-    restorePanel: { flex: 1, backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '15px', borderTop: '4px solid #10b981' },
     timeLabel: { color: '#94a3b8', fontSize: '11px', fontWeight: '700', letterSpacing: '1px', marginBottom: '8px' },
     liveTimeValue: { color: '#f59e0b', fontSize: '20px', fontWeight: '900', letterSpacing: '1px' },
     restoreTime: { color: '#10b981', fontSize: '20px', fontWeight: '900', letterSpacing: '0.5px' },
