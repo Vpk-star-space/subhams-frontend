@@ -195,7 +195,14 @@ function App() {
   };
 
   const refreshAuthToken = useCallback(async () => {
-    if (!refreshToken || refreshToken === "null") return logout();
+    if (!refreshToken || refreshToken === "null") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("pmms_user");
+      setToken(null);
+      setRefreshToken(null);
+      return null;
+    }
     try {
       const res = await fetch(`${API}/auth/refresh-token`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -206,8 +213,16 @@ function App() {
         localStorage.setItem("token", data.accessToken);
         setToken(data.accessToken);
         return data.accessToken;
-      } else { logout(); return null; }
-    } catch (err) { logout(); return null; }
+      } else { 
+        localStorage.removeItem("token");
+        localStorage.removeItem("refreshToken");
+        setToken(null);
+        setRefreshToken(null);
+        return null; 
+      }
+    } catch (err) { 
+      return null; 
+    }
   }, [refreshToken]);
 
   const enableAppLock = async () => {
@@ -379,8 +394,7 @@ function App() {
       if (res.ok) {
         alert("Password reset successful! Please log in."); 
         setAuthMode("login"); setOtp(""); setNewPassword(""); setPassword(""); 
-        setLockoutTimer(0); localStorage.removeItem('lockoutUntil');
-        setFailedAttempts(0); localStorage.removeItem('localFailedAttempts');
+        setLockoutTimer(0); localStorage.removeItem('lockoutUntil'); setFailedAttempts(0); localStorage.removeItem('localFailedAttempts');
       } else { alert(data.error || data.message || "Invalid OTP."); }
     } catch (err) { alert("Server is offline."); } finally { setIsServerWaking(false); }
   };
@@ -533,9 +547,11 @@ function App() {
       if (pRes.ok) {
          const pData = await pRes.json();
          if (pData.user) {
-             const merged = { ...userProfile, ...pData.user };
-             setUserProfile(merged);
-             localStorage.setItem("pmms_user", JSON.stringify(merged));
+             setUserProfile(prev => {
+                 const merged = { ...prev, ...pData.user };
+                 localStorage.setItem("pmms_user", JSON.stringify(merged));
+                 return merged;
+             });
          }
       }
 
@@ -550,6 +566,7 @@ function App() {
       setInsights(iData);
     } catch (err) { console.error("Fetch Error:", err); } 
     finally { setIsServerWaking(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, refreshAuthToken, isAppLocked]);
 
   useEffect(() => { fetchAllData(); }, [fetchAllData]);
