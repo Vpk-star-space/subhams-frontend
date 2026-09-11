@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Ba
 import { GoogleLogin } from '@react-oauth/google';
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas"; 
-import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code, User, Bell, BellOff, Check, X } from 'lucide-react'; 
+import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code, User, Bell, BellOff, BellRing, Check, X } from 'lucide-react'; 
 import InstallPopup from './components/InstallPopup';
 import AdminCommandCenter from './components/AdminCommandCenter';
 
@@ -36,6 +36,17 @@ const formatDateTime = (dateObj) => {
 
 const bufferToBase64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
 const base64ToBuffer = (b64) => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+
+const urlBase64ToUint8Array = (base64String) => {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+};
 
 const MaintenanceScreen = () => {
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -93,17 +104,6 @@ const AppLockScreen = ({ onUnlock }) => (
   </div>
 );
 
-const urlBase64ToUint8Array = (base64String) => {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-};
-
 function App() {
   const [isServerWaking, setIsServerWaking] = useState(!!localStorage.getItem("token")); 
   const [authMode, setAuthMode] = useState("login"); 
@@ -113,12 +113,11 @@ function App() {
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [refreshToken, setRefreshToken] = useState(localStorage.getItem("refreshToken"));
   
-  // 🟢 SMART PROFILE, LANGUAGE & SILENT MODE STATE
-  const [userProfile, setUserProfile] = useState(() => JSON.parse(localStorage.getItem('pmms_user') || '{"username":"","email":"","preferred_language":"en"}'));
+  const [userProfile, setUserProfile] = useState(() => JSON.parse(localStorage.getItem('pmms_user') || '{"username":"","email":"","preferred_language":"en","silent_mode":false}'));
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [editName, setEditName] = useState("");
   const [pushEnabled, setPushEnabled] = useState(false);
-  const [isSilenced, setIsSilenced] = useState(localStorage.getItem("notifications_silenced") === "true");
+  const [isProcessingPush, setIsProcessingPush] = useState(false);
 
   const [email, setEmail] = useState(""); 
   const [username, setUsername] = useState("");
@@ -277,7 +276,12 @@ function App() {
         localStorage.setItem("token", data.accessToken); 
         localStorage.setItem("refreshToken", data.refreshToken);
 
-        const profileData = { username: data.user?.username || username, email: data.user?.email || email, preferred_language: data.user?.preferred_language || 'en' };
+        const profileData = { 
+          username: data.user?.username || username, 
+          email: data.user?.email || email, 
+          preferred_language: data.user?.preferred_language || 'en',
+          silent_mode: data.user?.silent_mode || false
+        };
         localStorage.setItem("pmms_user", JSON.stringify(profileData));
         setUserProfile(profileData);
 
@@ -319,7 +323,12 @@ function App() {
       if (res.ok) {
         localStorage.setItem("token", data.accessToken); localStorage.setItem("refreshToken", data.refreshToken);
         
-        const profileData = { username: data.user?.username || "Google User", email: data.user?.email || "", preferred_language: data.user?.preferred_language || 'en' };
+        const profileData = { 
+          username: data.user?.username || "Google User", 
+          email: data.user?.email || "", 
+          preferred_language: data.user?.preferred_language || 'en',
+          silent_mode: data.user?.silent_mode || false
+        };
         localStorage.setItem("pmms_user", JSON.stringify(profileData));
         setUserProfile(profileData);
 
@@ -378,8 +387,9 @@ function App() {
 
   const logout = () => { 
     localStorage.removeItem("token"); localStorage.removeItem("refreshToken"); localStorage.removeItem("pmms_user");
-    setToken(null); setRefreshToken(null); setUserProfile({username:"", email:"", preferred_language: "en"});
+    setToken(null); setRefreshToken(null); setUserProfile({username:"", email:"", preferred_language: "en", silent_mode: false});
     setTransactions([]); setAllTransactions([]); setMonthlyChartData([]); setInsights(null); 
+    setPushEnabled(false);
     setAuthMode("login");
   };
 
@@ -424,15 +434,16 @@ function App() {
       }
   };
 
-  // 🟢 SETUP PUSH NOTIFICATIONS USING PROFILE LANGUAGE
   const setupPushNotifications = async () => {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
           alert("Push notifications are not supported by your browser.");
           return;
       }
+      setIsProcessingPush(true);
       try {
           const permission = await Notification.requestPermission();
           if (permission !== 'granted') {
+              setIsProcessingPush(false);
               alert("You denied permission for notifications.");
               return;
           }
@@ -450,39 +461,54 @@ function App() {
           });
 
           setPushEnabled(true);
-          setIsSilenced(false);
-          localStorage.removeItem("notifications_silenced");
+          const updated = { ...userProfile, silent_mode: false };
+          setUserProfile(updated);
+          localStorage.setItem("pmms_user", JSON.stringify(updated));
           alert(userProfile.preferred_language === 'te' ? "✅ నోటిఫికేషన్‌లు ప్రారంభించబడ్డాయి!" : "✅ Notifications Enabled! Welcome alert sent.");
       } catch (error) {
           console.error("Error setting up push notifications:", error);
           alert("Failed to enable notifications. Ensure your site uses HTTPS.");
       }
+      setIsProcessingPush(false);
   };
 
-  // 🟢 TURN OFF NOTIFICATIONS (Two distinct choices: Silent vs Fully Off)
-  const disablePushNotifications = async (silentMode = false) => {
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  const toggleSilentMode = async (turnSilent) => {
+      setIsProcessingPush(true);
       try {
-          const registration = await navigator.serviceWorker.ready;
-          const subscription = await registration.pushManager.getSubscription();
-          if (subscription) {
-              await subscription.unsubscribe();
-          }
-          setPushEnabled(false);
-
-          if (silentMode) {
-              setIsSilenced(true);
-              localStorage.setItem("notifications_silenced", "true");
-              alert("🔕 Notifications set to Silent Mode. The banner will stay hidden.");
-          } else {
-              setIsSilenced(false);
-              localStorage.removeItem("notifications_silenced");
-              alert("🔕 Notifications turned off. You can enable them again from the banner.");
-          }
+          await fetch(`${API}/notifications/toggle-silent`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ silent: turnSilent })
+          });
+          const updated = { ...userProfile, silent_mode: turnSilent };
+          setUserProfile(updated);
+          localStorage.setItem("pmms_user", JSON.stringify(updated));
+          alert(turnSilent ? "🔕 Silent Mode Activated. Notifications will display without sound." : "🔔 Sound Restored! Notifications are now loud.");
       } catch (error) {
-          console.error("Error disabling push notifications:", error);
-          alert("Failed to turn off notifications.");
+          alert("Failed to toggle silent mode.");
       }
+      setIsProcessingPush(false);
+  };
+
+  const disablePushNotifications = async () => {
+      setIsProcessingPush(true);
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+          try {
+              const registration = await navigator.serviceWorker.ready;
+              const subscription = await registration.pushManager.getSubscription();
+              if (subscription) {
+                  await subscription.unsubscribe();
+              }
+              setPushEnabled(false);
+              const updated = { ...userProfile, silent_mode: false };
+              setUserProfile(updated);
+              localStorage.setItem("pmms_user", JSON.stringify(updated));
+              alert("🔕 Notifications turned off completely. Banner is restored.");
+          } catch (error) {
+              alert("Failed to turn off notifications.");
+          }
+      }
+      setIsProcessingPush(false);
   };
 
   const fetchAllData = useCallback(async () => {
@@ -507,8 +533,9 @@ function App() {
       if (pRes.ok) {
          const pData = await pRes.json();
          if (pData.user) {
-             setUserProfile(pData.user);
-             localStorage.setItem("pmms_user", JSON.stringify(pData.user));
+             const merged = { ...userProfile, ...pData.user };
+             setUserProfile(merged);
+             localStorage.setItem("pmms_user", JSON.stringify(merged));
          }
       }
 
@@ -780,48 +807,14 @@ function App() {
   `;
 
   if (isMaintenanceMode) return <MaintenanceScreen />;
-
-  // 🟢 ROUTING: ADMIN COMMAND CENTER VIEW
-  if (isAdminView) {
-      return <AdminCommandCenter token={token} onBack={() => setIsAdminView(false)} />;
-  }
+  if (isAdminView) return <AdminCommandCenter token={token} onBack={() => setIsAdminView(false)} />;
 
   if (isServerWaking && !token) return ( 
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", backgroundColor: "#f8fafc", padding: "20px" }}>
-      <style>
-        {`
-          ${globalStyles}
-          @keyframes coin-flip { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } }
-          @keyframes float-up-down { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
-          @keyframes shadow-pulse { 0%, 100% { transform: scale(1); opacity: 0.25; } 50% { transform: scale(0.5); opacity: 0.1; } }
-          
-          .full-gold-coin { 
-            border-radius: 50%; background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); 
-            box-shadow: inset 0 0 15px rgba(180, 83, 9, 0.8), 0 10px 20px rgba(245, 158, 11, 0.4); 
-            display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; 
-            text-shadow: 1px 2px 4px rgba(180, 83, 9, 0.8); 
-            animation: float-up-down 2s ease-in-out infinite, coin-flip 1.5s linear infinite; 
-            width: 70px; height: 70px; font-size: 34px; border: 4px solid #fef08a;
-          }
-          .full-floor-shadow { 
-            background: #000; border-radius: 50%; filter: blur(3px); 
-            animation: shadow-pulse 2s ease-in-out infinite; 
-            width: 40px; height: 8px; margin-top: 20px;
-          }
-          @media (min-width: 768px) {
-            .full-gold-coin { width: 110px; height: 110px; font-size: 50px; border: 6px solid #fef08a; }
-            .full-floor-shadow { width: 60px; height: 12px; margin-top: 30px; }
-          }
-        `}
-      </style>
+      <style>{`${globalStyles} @keyframes coin-flip { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } } @keyframes float-up-down { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } } @keyframes shadow-pulse { 0%, 100% { transform: scale(1); opacity: 0.25; } 50% { transform: scale(0.5); opacity: 0.1; } } .full-gold-coin { border-radius: 50%; background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); box-shadow: inset 0 0 15px rgba(180, 83, 9, 0.8), 0 10px 20px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; text-shadow: 1px 2px 4px rgba(180, 83, 9, 0.8); animation: float-up-down 2s ease-in-out infinite, coin-flip 1.5s linear infinite; width: 70px; height: 70px; font-size: 34px; border: 4px solid #fef08a; } .full-floor-shadow { background: #000; border-radius: 50%; filter: blur(3px); animation: shadow-pulse 2s ease-in-out infinite; width: 40px; height: 8px; margin-top: 20px; } @media (min-width: 768px) { .full-gold-coin { width: 110px; height: 110px; font-size: 50px; border: 6px solid #fef08a; } .full-floor-shadow { width: 60px; height: 12px; margin-top: 30px; } }`}</style>
       <div style={{ width: "100%", maxWidth: "420px", backgroundColor: "white", padding: "45px 25px", borderRadius: "24px", boxShadow: "0 20px 40px -10px rgba(0,0,0,0.1)", textAlign: "center", border: "1px solid #e2e8f0" }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "25px" }}>
-          <div className="full-gold-coin">₹</div>
-          <div className="full-floor-shadow"></div>
-        </div>
-        <h1 className="brand-logo" style={{ marginBottom: "10px", fontSize: "28px" }}>SUBHAMS PMMS</h1>
-        <h2 style={{ marginTop: "10px", color: "#0f172a", fontSize: "20px", fontWeight: "900" }}>Waking Servers...</h2>
-        <p style={{ margin: 0, color: "#64748b", fontSize: "14px", fontWeight: "600" }}>Establishing a secure financial connection.</p>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "25px" }}><div className="full-gold-coin">₹</div><div className="full-floor-shadow"></div></div>
+        <h1 className="brand-logo" style={{ marginBottom: "10px", fontSize: "28px" }}>SUBHAMS PMMS</h1><h2 style={{ marginTop: "10px", color: "#0f172a", fontSize: "20px", fontWeight: "900" }}>Waking Servers...</h2><p style={{ margin: 0, color: "#64748b", fontSize: "14px", fontWeight: "600" }}>Establishing a secure financial connection.</p>
       </div>
     </div>
   );
@@ -831,32 +824,17 @@ function App() {
   if (!token) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", backgroundColor: "#f1f5f9", padding: "20px" }}>
       <style>{globalStyles}</style>
-
       {lockoutTimer > 0 && ( 
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(15, 23, 42, 0.98)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', textAlign: 'center' }}>
-          <div style={{ background: "rgba(245, 158, 11, 0.1)", padding: "20px", borderRadius: "50%", marginBottom: "20px", border: "1px solid rgba(245, 158, 11, 0.2)" }}>
-              <Lock size={48} color="#f59e0b" />
-          </div>
+          <div style={{ background: "rgba(245, 158, 11, 0.1)", padding: "20px", borderRadius: "50%", marginBottom: "20px", border: "1px solid rgba(245, 158, 11, 0.2)" }}><Lock size={48} color="#f59e0b" /></div>
           <h1 style={{ fontSize: 'clamp(1.5rem, 6vw, 2.5rem)', color: 'white', marginBottom: '10px' }}>Security Checkpoint</h1>
-          <div style={{ fontSize: '24px', color: '#fbbf24', fontWeight: 'bold', margin: '10px 0' }}>
-              Access restored in: {Math.floor(lockoutTimer / 60)}m {lockoutTimer % 60}s
-          </div>
-          <p style={{ margin: '20px 0', textAlign: 'center', maxWidth: '320px', color: '#cbd5e1', lineHeight: '1.5' }}>
-              We've temporarily limited access after multiple failed attempts. <br/><br/>
-              <strong>If this was you, please verify your identity to regain access immediately.</strong>
-          </p>
-          <button 
-              onClick={() => { setAuthMode("forgot"); setLockoutTimer(0); localStorage.removeItem('lockoutUntil'); }}
-              style={{ padding: '14px 28px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', width: '100%', maxWidth: '300px', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}
-          >
-              Unlock via Email
-          </button>
+          <div style={{ fontSize: '24px', color: '#fbbf24', fontWeight: 'bold', margin: '10px 0' }}>Access restored in: {Math.floor(lockoutTimer / 60)}m {lockoutTimer % 60}s</div>
+          <p style={{ margin: '20px 0', textAlign: 'center', maxWidth: '320px', color: '#cbd5e1', lineHeight: '1.5' }}>We've temporarily limited access after multiple failed attempts. <br/><br/><strong>If this was you, please verify your identity to regain access immediately.</strong></p>
+          <button onClick={() => { setAuthMode("forgot"); setLockoutTimer(0); localStorage.removeItem('lockoutUntil'); }} style={{ padding: '14px 28px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', width: '100%', maxWidth: '300px', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>Unlock via Email</button>
         </div>
       )}
-      
       <div style={{ width: "100%", maxWidth: "400px", backgroundColor: "white", padding: "40px 25px", borderRadius: "16px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", textAlign: "center" }}>
         <h1 className="brand-logo" style={{ marginBottom: "5px", fontSize: "2.5rem" }}>SUBHAMS</h1>
-        
         {authMode === "login" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="Username or Email" value={username} onChange={e => setUsername(e.target.value)} disabled={lockoutTimer > 0} />
@@ -868,7 +846,6 @@ function App() {
             <div style={{ display: "flex", justifyContent: "center" }}><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => alert("Google Error")} /></div>
           </div>
         )}
-
         {authMode === "register" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             <h3 style={{ color: "#10b981", margin: "0 0 10px 0" }}>Create an Account</h3>
@@ -879,7 +856,6 @@ function App() {
             <p style={{ fontSize: "14px", margin: "10px 0", cursor: "pointer" }} onClick={() => setAuthMode("login")}>Back to Login</p>
           </div>
         )}
-
         {authMode === "otp" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             <h3 style={{ color: "#f59e0b", margin: "0" }}>Enter OTP Code</h3>
@@ -889,7 +865,6 @@ function App() {
             <p style={{ fontSize: "14px", margin: "10px 0", cursor: "pointer" }} onClick={() => setAuthMode("register")}><span style={{ color: "#ef4444" }}>Cancel & Go Back</span></p>
           </div>
         )}
-
         {authMode === "forgot" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             <h3 style={{ color: "#ef4444", margin: "0 0 10px 0" }}>Reset Password</h3>
@@ -899,7 +874,6 @@ function App() {
             <p style={{ fontSize: "14px", margin: "10px 0", cursor: "pointer", color: "#64748b" }} onClick={() => setAuthMode("login")}>Back to Login</p>
           </div>
         )}
-
         {authMode === "reset_otp" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             <h3 style={{ color: "#ef4444", margin: "0" }}>Set New Password</h3>
@@ -918,35 +892,22 @@ function App() {
   return (
     <div>
       <style>{globalStyles}</style>
-
       <div className="marquee-container">
-        <div className="marquee-text">
-          🚀 Important Note: Welcome to your Subhams Personal Money Management System! Track your income, manage your expenses, and secure your financial future! Thank You visiting My website! Venkata Pavan Kumar.
-        </div>
+        <div className="marquee-text">🚀 Important Note: Welcome to your Subhams Personal Money Management System! Track your income, manage your expenses, and secure your financial future! Thank You visiting My website! Venkata Pavan Kumar.</div>
       </div>
       
       <nav className="nav-bar">
         <h2 className="brand-logo" style={{ fontSize: "1.8rem" }}>Subhams</h2>
-        
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          
-          {/* 🟢 SECURE ADMIN BUTTON (Only shows for your email) */}
           {userProfile.email === 'pavanvenkat63@gmail.com' && (
-              <button 
-                  style={{ padding: "8px 14px", background: "#f59e0b", color: "#0f172a", border: "none", borderRadius: "8px", fontWeight: "900", cursor: "pointer", fontSize: "12px", boxShadow: "0 2px 5px rgba(245, 158, 11, 0.4)" }} 
-                  onClick={() => setIsAdminView(true)}
-              >
-                  ⚙️ Admin
-              </button>
+              <button style={{ padding: "8px 14px", background: "#f59e0b", color: "#0f172a", border: "none", borderRadius: "8px", fontWeight: "900", cursor: "pointer", fontSize: "12px", boxShadow: "0 2px 5px rgba(245, 158, 11, 0.4)" }} onClick={() => setIsAdminView(true)}>⚙️ Admin</button>
           )}
 
-          {/* 🟢 CLEAN MINIMALIST USER BADGE (Only single circular icon) */}
           <div 
             onClick={() => { setEditName(userProfile.username); setShowProfileModal(true); }}
             style={{ 
               width: "38px", height: "38px", borderRadius: "50%", background: "linear-gradient(135deg, #f59e0b, #fbbf24)", 
-              display: "flex", alignItems: "center", justifyContent: "center", 
-              fontWeight: "900", color: "#0f172a", fontSize: "18px", textTransform: "uppercase",
+              display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "900", color: "#0f172a", fontSize: "18px", textTransform: "uppercase",
               cursor: "pointer", border: "2px solid #ffffff", boxShadow: "0 4px 10px rgba(0,0,0,0.1)", transition: "0.2s"
             }}
           >
@@ -957,15 +918,11 @@ function App() {
         </div>
       </nav>
 
-      {/* 🟢 PROFILE & NOTIFICATIONS MODAL */}
       {showProfileModal && (
         <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100vh", background: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(5px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "20px" }}>
             <div style={{ background: "white", padding: "30px", borderRadius: "20px", width: "100%", maxWidth: "400px", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", position: "relative" }}>
                 <X size={24} color="#64748b" style={{ position: "absolute", top: "20px", right: "20px", cursor: "pointer" }} onClick={() => setShowProfileModal(false)} />
-                
-                <h2 style={{ margin: "0 0 20px 0", color: "#0f172a", fontSize: "22px", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <User size={24} color="#3b82f6" /> Profile Settings
-                </h2>
+                <h2 style={{ margin: "0 0 20px 0", color: "#0f172a", fontSize: "22px", display: "flex", alignItems: "center", gap: "8px" }}><User size={24} color="#3b82f6" /> Profile Settings</h2>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
                     <div>
@@ -976,28 +933,16 @@ function App() {
                     </div>
                     <div>
                         <label style={{ fontSize: "12px", fontWeight: "bold", color: "#3b82f6", marginBottom: "5px", display: "block" }}>Display Name</label>
-                        <input 
-                            type="text" 
-                            value={editName} 
-                            onChange={(e) => setEditName(e.target.value)}
-                            style={{ width: "100%", padding: "12px 15px", borderRadius: "8px", border: "1px solid #93c5fd", fontSize: "14px", outline: "none", color: "#0f172a", fontWeight: "bold" }}
-                        />
+                        <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} style={{ width: "100%", padding: "12px 15px", borderRadius: "8px", border: "1px solid #93c5fd", fontSize: "14px", outline: "none", color: "#0f172a", fontWeight: "bold" }}/>
                     </div>
-                    
                     <button onClick={updateProfileName} style={{ padding: "12px", background: "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
                         <Check size={18}/> Save Name
                     </button>
 
-                    {/* 🟢 PROFILE LANGUAGE PREFERENCE */}
                     <div>
                         <label style={{ fontSize: "12px", fontWeight: "bold", color: "#3b82f6", marginBottom: "5px", display: "block" }}>Notification Language / భాష</label>
-                        <select 
-                            value={userProfile.preferred_language || 'en'} 
-                            onChange={(e) => updateLanguagePreference(e.target.value)}
-                            style={{ width: "100%", padding: "12px 15px", borderRadius: "8px", border: "1px solid #93c5fd", fontSize: "14px", outline: "none", color: "#0f172a", fontWeight: "bold", background: "white" }}
-                        >
-                            <option value="en">English</option>
-                            <option value="te">తెలుగు (Telugu)</option>
+                        <select value={userProfile.preferred_language || 'en'} onChange={(e) => updateLanguagePreference(e.target.value)} style={{ width: "100%", padding: "12px 15px", borderRadius: "8px", border: "1px solid #93c5fd", fontSize: "14px", outline: "none", color: "#0f172a", fontWeight: "bold", background: "white" }}>
+                            <option value="en">English</option><option value="te">తెలుగు (Telugu)</option>
                         </select>
                     </div>
 
@@ -1007,61 +952,31 @@ function App() {
                         <h3 style={{ margin: "0 0 10px 0", fontSize: "16px", color: "#0f172a" }}>Smart Alerts</h3>
                         <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 15px 0", lineHeight: "1.4" }}>Receive real-time budget and transaction reminders based on your preferred language.</p>
                         
-                        {/* 🟢 SILENT MODE / OFF LOGIC */}
                         {pushEnabled ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#f0fdf4", padding: "10px", borderRadius: "8px", color: "#10b981", fontWeight: "bold", fontSize: "13px" }}>
-                                    <Bell size={16} /> Notifications Active 🟢
-                                </div>
+                                {userProfile.silent_mode ? (
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#fef3c7", padding: "10px", borderRadius: "8px", color: "#d97706", fontWeight: "bold", fontSize: "13px" }}><BellOff size={16} /> Notifications Silenced 🔕</div>
+                                ) : (
+                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#f0fdf4", padding: "10px", borderRadius: "8px", color: "#10b981", fontWeight: "bold", fontSize: "13px" }}><BellRing size={16} /> Notifications Active (Loud) 🟢</div>
+                                )}
                                 <div style={{ display: "flex", gap: "10px" }}>
-                                    <button 
-                                        onClick={() => disablePushNotifications(true)} 
-                                        style={{ flex: 1, padding: "10px", background: "#f59e0b", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}
-                                    >
-                                        <BellOff size={14}/> Silent Mode
+                                    <button disabled={isProcessingPush} onClick={() => toggleSilentMode(!userProfile.silent_mode)} style={{ flex: 1, padding: "10px", background: userProfile.silent_mode ? "#10b981" : "#f59e0b", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px", opacity: isProcessingPush ? 0.7 : 1 }}>
+                                        {isProcessingPush ? "⏳..." : userProfile.silent_mode ? <><Bell size={14}/> Make Loud</> : <><BellOff size={14}/> Mute Sound</>}
                                     </button>
-                                    <button 
-                                        onClick={() => disablePushNotifications(false)} 
-                                        style={{ flex: 1, padding: "10px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}
-                                    >
-                                        <X size={14}/> Turn Off Fully
-                                    </button>
-                                </div>
-                            </div>
-                        ) : isSilenced ? (
-                            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#fef3c7", padding: "10px", borderRadius: "8px", color: "#d97706", fontWeight: "bold", fontSize: "13px" }}>
-                                    <BellOff size={16} /> Notifications Silenced 🔕
-                                </div>
-                                <div style={{ display: "flex", gap: "10px" }}>
-                                    <button 
-                                        onClick={setupPushNotifications} 
-                                        style={{ flex: 1, padding: "10px", background: "#10b981", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}
-                                    >
-                                        <Bell size={14}/> Turn On
-                                    </button>
-                                    <button 
-                                        onClick={() => { setIsSilenced(false); localStorage.removeItem("notifications_silenced"); setShowProfileModal(false); }} 
-                                        style={{ flex: 1, padding: "10px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}
-                                    >
-                                        <X size={14}/> Turn Off Fully
+                                    <button disabled={isProcessingPush} onClick={disablePushNotifications} style={{ flex: 1, padding: "10px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px", opacity: isProcessingPush ? 0.7 : 1 }}>
+                                        {isProcessingPush ? "⏳..." : <><X size={14}/> Turn Off</>}
                                     </button>
                                 </div>
                             </div>
                         ) : (
-                            <button 
-                                onClick={setupPushNotifications} 
-                                style={{ width: "100%", padding: "12px", background: "#f59e0b", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", boxShadow: "0 4px 10px rgba(245, 158, 11, 0.3)" }}
-                            >
-                                <Bell size={18}/> Enable Push Notifications
+                            <button disabled={isProcessingPush} onClick={setupPushNotifications} style={{ width: "100%", padding: "12px", background: "#f59e0b", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", boxShadow: "0 4px 10px rgba(245, 158, 11, 0.3)", opacity: isProcessingPush ? 0.7 : 1 }}>
+                                {isProcessingPush ? "⏳ Connecting..." : <><Bell size={18}/> Enable Push Notifications</>}
                             </button>
                         )}
                     </div>
 
                     {localStorage.getItem("subhams_app_lock") !== "true" && (
-                        <button style={{ padding: "12px", background: "#f8fafc", color: "#0f172a", border: "1px solid #e2e8f0", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginTop: "5px" }} onClick={() => { setShowProfileModal(false); enableAppLock(); }}>
-                            <Lock size={16} /> Enable Biometric App Lock
-                        </button>
+                        <button style={{ padding: "12px", background: "#f8fafc", color: "#0f172a", border: "1px solid #e2e8f0", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginTop: "5px" }} onClick={() => { setShowProfileModal(false); enableAppLock(); }}><Lock size={16} /> Enable Biometric App Lock</button>
                     )}
                 </div>
             </div>
@@ -1069,82 +984,46 @@ function App() {
       )}
 
       <div className="container" style={{ position: 'relative', minHeight: '65vh' }}>
-        
         {isServerWaking && (
           <div style={{ position: "absolute", top: "15px", right: "15px", background: "rgba(255, 255, 255, 0.95)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", gap: "12px", zIndex: 50, borderRadius: "50px", padding: "8px 20px 8px 8px", boxShadow: "0 10px 25px rgba(0,0,0,0.15)", border: "1px solid #e2e8f0" }}>
-            <style>
-              {`
-                @keyframes coin-spin-fast { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } }
-                .corner-gold-coin { border-radius: 50%; background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); box-shadow: inset 0 0 8px rgba(180, 83, 9, 0.8), 0 4px 10px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; text-shadow: 1px 2px 2px rgba(180, 83, 9, 0.8); animation: coin-spin-fast 1.5s linear infinite; width: 35px; height: 35px; font-size: 18px; border: 2px solid #fef08a; flex-shrink: 0; }
-              `}
-            </style>
+            <style>{`@keyframes coin-spin-fast { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } } .corner-gold-coin { border-radius: 50%; background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); box-shadow: inset 0 0 8px rgba(180, 83, 9, 0.8), 0 4px 10px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; text-shadow: 1px 2px 2px rgba(180, 83, 9, 0.8); animation: coin-spin-fast 1.5s linear infinite; width: 35px; height: 35px; font-size: 18px; border: 2px solid #fef08a; flex-shrink: 0; }`}</style>
             <div className="corner-gold-coin">₹</div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ margin: "0", color: "#0f172a", fontSize: "14px", fontWeight: "900", letterSpacing: "0.5px" }}>Syncing...</span>
-              <span style={{ margin: "0", color: "#64748b", fontSize: "10px", fontWeight: "700" }}>Waking Server</span>
-            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}><span style={{ margin: "0", color: "#0f172a", fontSize: "14px", fontWeight: "900", letterSpacing: "0.5px" }}>Syncing...</span><span style={{ margin: "0", color: "#64748b", fontSize: "10px", fontWeight: "700" }}>Waking Server</span></div>
           </div>
         )}
 
         <div style={{ marginBottom: '25px', marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <h2 style={{ margin: 0, fontSize: '28px', color: '#0f172a', fontWeight: '900', letterSpacing: '-0.5px' }}>
-                Hello, <span style={{ color: '#3b82f6' }}>{userProfile.username || "User"}</span> 👋
-            </h2>
-            <p style={{ margin: 0, color: '#64748b', fontSize: '15px', fontWeight: '600' }}>
-                Here is your current financial overview.
-            </p>
+            <h2 style={{ margin: 0, fontSize: '28px', color: '#0f172a', fontWeight: '900', letterSpacing: '-0.5px' }}>Hello, <span style={{ color: '#3b82f6' }}>{userProfile.username || "User"}</span> 👋</h2>
+            <p style={{ margin: 0, color: '#64748b', fontSize: '15px', fontWeight: '600' }}>Here is your current financial overview.</p>
         </div>
 
-        {/* 🔔 SMART NOTIFICATION BANNER (Hides if enabled OR if explicitly silenced) */}
-        {!pushEnabled && !isSilenced && (
+        {!pushEnabled && (
             <div style={{ background: "linear-gradient(135deg, #2563eb, #1e3a8a)", borderRadius: "16px", padding: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "25px", color: "white", boxShadow: "0 10px 25px rgba(37, 99, 235, 0.25)", flexWrap: "wrap", gap: "15px" }}>
                 <div>
                     <h3 style={{ margin: "0 0 5px 0", fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}><Bell size={18} color="#fcd34d" /> Enable Smart Alerts</h3>
                     <p style={{ margin: 0, fontSize: "13px", color: "#bfdbfe", maxWidth: "100%" }}>Get critical budget warnings and updates even when the app is closed.</p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    {/* 🟢 LANGUAGE SELECTION DROPDOWN IN BANNER */}
-                    <select 
-                        value={userProfile.preferred_language || 'en'} 
-                        onChange={(e) => updateLanguagePreference(e.target.value)}
-                        style={{ padding: "8px", borderRadius: "8px", border: "none", outline: "none", fontSize: "13px", fontWeight: "bold", background: "rgba(255,255,255,0.2)", color: "white", cursor: "pointer" }}
-                    >
-                        <option value="en" style={{color: "black"}}>English</option>
-                        <option value="te" style={{color: "black"}}>తెలుగు (Telugu)</option>
+                    <select value={userProfile.preferred_language || 'en'} onChange={(e) => updateLanguagePreference(e.target.value)} style={{ padding: "8px", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.3)", outline: "none", fontSize: "13px", fontWeight: "bold", background: "rgba(0,0,0,0.2)", color: "white", cursor: "pointer" }}>
+                        <option value="en" style={{color: "black"}}>English</option><option value="te" style={{color: "black"}}>తెలుగు (Telugu)</option>
                     </select>
-                    <button onClick={setupPushNotifications} style={{ background: "white", color: "#1e3a8a", border: "none", padding: "10px 16px", borderRadius: "8px", fontWeight: "bold", fontSize: "13px", cursor: "pointer", whiteSpace: "nowrap" }}>
-                        Enable
+                    <button disabled={isProcessingPush} onClick={setupPushNotifications} style={{ background: "white", color: "#1e3a8a", border: "none", padding: "10px 16px", borderRadius: "8px", fontWeight: "bold", fontSize: "13px", cursor: "pointer", whiteSpace: "nowrap", opacity: isProcessingPush ? 0.7 : 1 }}>
+                        {isProcessingPush ? "⏳..." : "Enable"}
                     </button>
                 </div>
             </div>
         )}
 
-        {/* Dashboard Grid */}
         <div className="dashboard-grid">
-          <div className="metric-card">
-            <div className="metric-title">TOTAL INCOME <br/>ఆదాయం</div>
-            <div className="metric-value" style={{ color: "#10b981" }}>₹{income}</div>
-          </div>
-          <div className="metric-card">
-            <div className="metric-title">TOTAL EXPENSE <br/>ఖర్చు</div>
-            <div className="metric-value" style={{ color: "#ef4444" }}>₹{expense}</div>
-          </div>
-          <div className="metric-card">
-            <div className="metric-title">PENDING <br/>పెండింగ్</div>
-            <div className="metric-value" style={{ color: "#f59e0b" }}>₹{pending}</div>
-          </div>
-          <div className="metric-card" style={{ backgroundColor: balance >= 0 ? "#f0fdf4" : "#fef2f2" }}>
-            <div className="metric-title">BALANCE <br/>నిల్వ</div>
-            <div className="metric-value" style={{ color: balance >= 0 ? "#3b82f6" : "#ef4444" }}>₹{balance}</div>
-          </div>
+          <div className="metric-card"><div className="metric-title">TOTAL INCOME <br/>ఆదాయం</div><div className="metric-value" style={{ color: "#10b981" }}>₹{income}</div></div>
+          <div className="metric-card"><div className="metric-title">TOTAL EXPENSE <br/>ఖర్చు</div><div className="metric-value" style={{ color: "#ef4444" }}>₹{expense}</div></div>
+          <div className="metric-card"><div className="metric-title">PENDING <br/>పెండింగ్</div><div className="metric-value" style={{ color: "#f59e0b" }}>₹{pending}</div></div>
+          <div className="metric-card" style={{ backgroundColor: balance >= 0 ? "#f0fdf4" : "#fef2f2" }}><div className="metric-title">BALANCE <br/>నిల్వ</div><div className="metric-value" style={{ color: balance >= 0 ? "#3b82f6" : "#ef4444" }}>₹{balance}</div></div>
         </div>
 
         {smartMsg && (
           <div style={{ backgroundColor: "white", borderRadius: "16px", padding: "20px", marginBottom: "20px", border: "1px solid #e2e8f0" }}>
-            <div className={insightClass}>
-              <h4 style={{ margin: "0 0 8px 0" }}>💡 Subhams Insights:</h4>
-              <div style={{ lineHeight: "1.5" }}>{smartMsg} <br /><small style={{ opacity: 0.8 }}>{smartMsgTe}</small></div>
-            </div>
+            <div className={insightClass}><h4 style={{ margin: "0 0 8px 0" }}>💡 Subhams Insights:</h4><div style={{ lineHeight: "1.5" }}>{smartMsg} <br /><small style={{ opacity: 0.8 }}>{smartMsgTe}</small></div></div>
           </div>
         )}
 
@@ -1154,26 +1033,10 @@ function App() {
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="Title (e.g., Rent)" value={title} onChange={e => setTitle(e.target.value)} />
               <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} type="number" placeholder="Amount (₹)" value={amount} onChange={e => setAmount(e.target.value)} />
-              
               <select style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", backgroundColor: "white", outline: "none" }} value={category} onChange={e => setCategory(e.target.value)}>
-                <optgroup label="Income Sources">
-                  <option value="Salary">💰 Salary</option>
-                  <option value="Investment">📈 Investment</option>
-                  <option value="Business">💼 Business</option>
-                </optgroup>
-                <optgroup label="Expense / Pending Needs">
-                  <option value="Food">🍔 Food</option>
-                  <option value="Travel">✈️ Travel</option>
-                  <option value="Shopping">🛍️ Shopping</option>
-                  <option value="Recharge">📱 Recharge</option>
-                  <option value="Bills">🧾 Bills</option>
-                  <option value="Tax">🏛️ Tax</option>
-                  <option value="Health">🏥 Health</option>
-                  <option value="Education">🎓 Education</option>
-                  <option value="Other">📌 Other</option>
-                </optgroup>
+                <optgroup label="Income Sources"><option value="Salary">💰 Salary</option><option value="Investment">📈 Investment</option><option value="Business">💼 Business</option></optgroup>
+                <optgroup label="Expense / Pending Needs"><option value="Food">🍔 Food</option><option value="Travel">✈️ Travel</option><option value="Shopping">🛍️ Shopping</option><option value="Recharge">📱 Recharge</option><option value="Bills">🧾 Bills</option><option value="Tax">🏛️ Tax</option><option value="Health">🏥 Health</option><option value="Education">🎓 Education</option><option value="Other">📌 Other</option></optgroup>
               </select>
-
               <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} type="date" value={date || ""} onChange={e => setDate(e.target.value)} />
             </div>
             
@@ -1182,31 +1045,21 @@ function App() {
               <button style={{ flex: 1, padding: "12px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }} onClick={() => handleSubmit("expense")}>- Expense</button>
               <button style={{ flex: 1, padding: "12px", background: "#f59e0b", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }} onClick={() => handleSubmit("pending")}>⏳ Pending</button>
             </div>
-            
             {editingId && <button style={{ width: "100%", padding: "14px", background: "#e2e8f0", color: "#334155", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", marginTop: "10px" }} onClick={cancelEdit}>Cancel Edit</button>}
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             <div style={{ backgroundColor: "white", borderRadius: "16px", padding: "20px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column" }}>
               <h3 style={{ margin: "0 0 15px 0" }}>📜 History</h3>
-              
               <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
                 <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="Search Title or Amount..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                 <select style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", backgroundColor: "white", outline: "none" }} value={filterType} onChange={e => setFilterType(e.target.value)}>
                   <option value="All">All Types</option><option value="income">Income</option><option value="expense">Expense</option><option value="pending">Pending</option>
                 </select>
-                
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
-                  <div style={{ flex: "1 1 140px", display: "flex", flexDirection: "column" }}>
-                    <label style={{ fontSize: "12px", fontWeight: "bold", color: "#64748b", marginBottom: "5px" }}>From Date:</label>
-                    <input type="date" style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} value={filterStartDate || ""} onChange={e => setFilterStartDate(e.target.value)} />
-                  </div>
-                  <div style={{ flex: "1 1 140px", display: "flex", flexDirection: "column" }}>
-                    <label style={{ fontSize: "12px", fontWeight: "bold", color: "#64748b", marginBottom: "5px" }}>To Date:</label>
-                    <input type="date" style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} value={filterEndDate || ""} onChange={e => setFilterEndDate(e.target.value)} />
-                  </div>
+                  <div style={{ flex: "1 1 140px", display: "flex", flexDirection: "column" }}><label style={{ fontSize: "12px", fontWeight: "bold", color: "#64748b", marginBottom: "5px" }}>From Date:</label><input type="date" style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} value={filterStartDate || ""} onChange={e => setFilterStartDate(e.target.value)} /></div>
+                  <div style={{ flex: "1 1 140px", display: "flex", flexDirection: "column" }}><label style={{ fontSize: "12px", fontWeight: "bold", color: "#64748b", marginBottom: "5px" }}>To Date:</label><input type="date" style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} value={filterEndDate || ""} onChange={e => setFilterEndDate(e.target.value)} /></div>
                 </div>
-
                 <div style={{ display: "flex", gap: "10px", marginTop: "5px" }}>
                   <button style={{ flex: 1, padding: "14px", background: "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }} onClick={applyFilters}>Filter</button>
                   <button style={{ flex: 1, padding: "14px", background: "#e2e8f0", color: "#334155", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }} onClick={clearFilters}>Clear</button>
@@ -1215,28 +1068,13 @@ function App() {
 
               <div className="scrollable-history" style={{ flex: 1, overflowY: "auto", maxHeight: showAllHistory ? "400px" : "auto", paddingRight: "5px" }}>
                 {transactions.length === 0 && <p style={{ color: "#94a3b8", textAlign: "center" }}>No records found.</p>}
-                
                 {(showAllHistory ? transactions : transactions.slice(0, 5)).map((t) => {
-                  const isInc = t.type === "income";
-                  const isExp = t.type === "expense";
-                  const bgColor = isInc ? "#f0fdf4" : isExp ? "#fef2f2" : "#fffbeb"; 
-                  const borderColor = isInc ? "#10b981" : isExp ? "#ef4444" : "#f59e0b";
-                  const statusText = isInc ? "RECEIVED" : isExp ? "PAID" : "PENDING";
-
+                  const isInc = t.type === "income"; const isExp = t.type === "expense"; const bgColor = isInc ? "#f0fdf4" : isExp ? "#fef2f2" : "#fffbeb"; const borderColor = isInc ? "#10b981" : isExp ? "#ef4444" : "#f59e0b"; const statusText = isInc ? "RECEIVED" : isExp ? "PAID" : "PENDING";
                   return (
                     <div key={t._id} className="history-item" style={{ backgroundColor: bgColor, borderLeft: `5px solid ${borderColor}` }}>
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <b style={{ color: borderColor, fontSize: "1.2rem" }}>
-                            {isInc ? "+" : isExp ? "-" : "⏳"} ₹{t.amount}
-                          </b>
-                          <span style={{ backgroundColor: borderColor, color: "white", padding: "2px 6px", borderRadius: "4px", fontSize: "0.65rem", fontWeight: "bold" }}>
-                            {statusText}
-                          </span>
-                        </div>
-                        <div style={{ color: "#334155", fontSize: "0.95rem", marginTop: "4px", fontWeight: "600" }}>
-                          {t.title} <span style={{ background: "white", padding: "2px 8px", borderRadius: "10px", fontSize: "0.75rem", marginLeft: "5px", color: "#64748b", border: "1px solid #e2e8f0" }}>{t.category || "Other"}</span>
-                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><b style={{ color: borderColor, fontSize: "1.2rem" }}>{isInc ? "+" : isExp ? "-" : "⏳"} ₹{t.amount}</b><span style={{ backgroundColor: borderColor, color: "white", padding: "2px 6px", borderRadius: "4px", fontSize: "0.65rem", fontWeight: "bold" }}>{statusText}</span></div>
+                        <div style={{ color: "#334155", fontSize: "0.95rem", marginTop: "4px", fontWeight: "600" }}>{t.title} <span style={{ background: "white", padding: "2px 8px", borderRadius: "10px", fontSize: "0.75rem", marginLeft: "5px", color: "#64748b", border: "1px solid #e2e8f0" }}>{t.category || "Other"}</span></div>
                         <div style={{ fontSize: "0.80rem", color: "#94a3b8", marginTop: "4px", fontWeight: "bold" }}>{formatDate(t.date)}</div>
                       </div>
                       <div style={{ display: "flex", gap: "15px", alignItems: "center" }}>
@@ -1246,192 +1084,59 @@ function App() {
                     </div>
                   );
                 })}
-
                 {transactions.length > 5 && (
-                  <div style={{ textAlign: "center", marginTop: "15px", marginBottom: "10px" }}>
-                    <button 
-                      onClick={() => setShowAllHistory(!showAllHistory)}
-                      style={{
-                        background: "white",
-                        border: "1px solid #cbd5e1",
-                        padding: "10px 20px",
-                        borderRadius: "20px",
-                        color: "#3b82f6",
-                        fontWeight: "bold",
-                        cursor: "pointer",
-                        fontSize: "14px",
-                        boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-                        transition: "all 0.2s ease"
-                      }}
-                    >
-                      {showAllHistory ? "Show Less ↑" : `View More Transactions (${transactions.length - 5} hidden) ↓`}
-                    </button>
-                  </div>
+                  <div style={{ textAlign: "center", marginTop: "15px", marginBottom: "10px" }}><button onClick={() => setShowAllHistory(!showAllHistory)} style={{ background: "white", border: "1px solid #cbd5e1", padding: "10px 20px", borderRadius: "20px", color: "#3b82f6", fontWeight: "bold", cursor: "pointer", fontSize: "14px", boxShadow: "0 2px 4px rgba(0,0,0,0.05)", transition: "all 0.2s ease" }}>{showAllHistory ? "Show Less ↑" : `View More Transactions (${transactions.length - 5} hidden) ↓`}</button></div>
                 )}
               </div>
             </div>
-
             {transactions.length > 0 && (
-              <button 
-                style={{ width: "100%", padding: "20px", background: isDownloading ? "#cbd5e1" : "#1e293b", color: "white", border: "none", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "15px", cursor: isDownloading ? "not-allowed" : "pointer" }} 
-                onClick={downloadWhitePaper}
-                disabled={isDownloading}
-              >
-                <span style={{ fontSize: "1.8rem" }}>{isDownloading ? "⏳" : "📄"}</span>
-                <div style={{ textAlign: "left" }}>
-                  <div style={{ fontWeight: "bold", fontSize: "16px" }}>
-                    {isDownloading ? "Generating Filtered PDF..." : "Download Filtered Report"}
-                  </div>
-                </div>
+              <button onClick={downloadWhitePaper} disabled={isDownloading} style={{ width: "100%", padding: "20px", background: isDownloading ? "#cbd5e1" : "#1e293b", color: "white", border: "none", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "15px", cursor: isDownloading ? "not-allowed" : "pointer" }} >
+                <span style={{ fontSize: "1.8rem" }}>{isDownloading ? "⏳" : "📄"}</span><div style={{ textAlign: "left" }}><div style={{ fontWeight: "bold", fontSize: "16px" }}>{isDownloading ? "Generating Filtered PDF..." : "Download Filtered Report"}</div></div>
               </button>
             )}
           </div>
         </div>
 
-        {/* Charts & Graphs */}
         <div className="action-grid" style={{ marginTop: "20px" }}>
           <div style={{ backgroundColor: "white", borderRadius: "16px", padding: "20px", border: "1px solid #e2e8f0" }}>
             <h3 style={{ textAlign: "center", marginTop: 0 }}>📊 Overview</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={pieData} innerRadius={50} outerRadius={70} dataKey="value">
-                  <Cell fill="#10b981" />
-                  <Cell fill="#ef4444" />
-                  <Cell fill="#f59e0b" />
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            <ResponsiveContainer width="100%" height={220}><PieChart><Pie data={pieData} innerRadius={50} outerRadius={70} dataKey="value"><Cell fill="#10b981" /><Cell fill="#ef4444" /><Cell fill="#f59e0b" /></Pie><Tooltip /><Legend /></PieChart></ResponsiveContainer>
           </div>
           <div style={{ backgroundColor: "white", borderRadius: "16px", padding: "20px", border: "1px solid #e2e8f0" }}>
             <h3 style={{ textAlign: "center", marginTop: 0 }}>📈 Monthly Trends</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={monthlyChartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false}/>
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="income" fill="#10b981" />
-                <Bar dataKey="expense" fill="#ef4444" />
-              </BarChart>
-            </ResponsiveContainer>
+            <ResponsiveContainer width="100%" height={220}><BarChart data={monthlyChartData}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="income" fill="#10b981" /><Bar dataKey="expense" fill="#ef4444" /></BarChart></ResponsiveContainer>
           </div>
         </div>
 
         <div style={{ maxWidth: '700px', margin: '20px auto 0 auto', backgroundColor: "white", borderRadius: "16px", padding: "25px", border: "1px solid #e2e8f0" }}>
-          <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
-            <Calculator size={22} color="#3b82f6" /> Simple Interest Calculator
-          </h3>
+          <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}><Calculator size={22} color="#3b82f6" /> Simple Interest Calculator</h3>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "15px", marginBottom: "15px", marginTop: "20px" }}>
             <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="Principal (+/- ₹)" onChange={(e) => setInterestData({...interestData, principal: e.target.value})} />
             <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="Rate (%)" onChange={(e) => setInterestData({...interestData, rate: e.target.value})} />
             <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="Time (Months)" onChange={(e) => setInterestData({...interestData, time: e.target.value})} />
           </div>
           <button style={{ width: "100%", padding: "14px", background: "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }} onClick={calculateInterest}>Calculate Interest</button>
-          
           {interestResult.interest !== undefined && (
             <div className="insight-green" style={{ marginTop: "20px", padding: "15px", borderRadius: "8px", borderLeft: "5px solid #10b981", textAlign: 'center' }}>
-              <p style={{ margin: "5px 0", fontSize: "16px" }}>Earned Interest: <b style={{color: '#065f46'}}>₹{interestResult.interest}</b></p>
-              <p style={{ margin: "5px 0", fontSize: "16px" }}>Total Maturity Amount: <b style={{color: '#065f46'}}>₹{interestResult.total}</b></p>
+              <p style={{ margin: "5px 0", fontSize: "16px" }}>Earned Interest: <b style={{color: '#065f46'}}>₹{interestResult.interest}</b></p><p style={{ margin: "5px 0", fontSize: "16px" }}>Total Maturity Amount: <b style={{color: '#065f46'}}>₹{interestResult.total}</b></p>
             </div>
           )}
         </div>
-
       </div>
       
-      <footer style={{ 
-        padding: "50px 20px", 
-        marginTop: "60px", 
-        background: "linear-gradient(to bottom, #ffffff, #f8fafc)", 
-        borderTop: "1px solid #e2e8f0", 
-        boxShadow: "0 -10px 30px rgba(0, 0, 0, 0.02)", 
-        display: "flex", 
-        flexDirection: "column", 
-        alignItems: "center", 
-        gap: "15px" 
-      }}>
-        <div style={{ 
-          background: "rgba(59, 130, 246, 0.1)", 
-          padding: "8px 16px", 
-          borderRadius: "20px", 
-          color: "#3b82f6", 
-          fontWeight: "800", 
-          fontSize: "13px", 
-          letterSpacing: "1px", 
-          display: "flex", 
-          alignItems: "center", 
-          gap: "6px",
-          textTransform: "uppercase"
-        }}>
-          <Code size={16} /> Personal Money Management System
-        </div>
-
-        <div style={{ textAlign: "center", marginTop: "10px" }}>
-          <p style={{ margin: "0", fontSize: "14px", color: "#64748b", fontWeight: "500" }}>Designed & Engineered by</p>
-          <h3 style={{ margin: "8px 0", fontSize: "26px", color: "#0f172a", fontWeight: "900", letterSpacing: "-0.5px" }}>
-            Venkata Pavan Kumar Amarthaluri
-          </h3>
-        </div>
-
+      <footer style={{ padding: "50px 20px", marginTop: "60px", background: "linear-gradient(to bottom, #ffffff, #f8fafc)", borderTop: "1px solid #e2e8f0", boxShadow: "0 -10px 30px rgba(0, 0, 0, 0.02)", display: "flex", flexDirection: "column", alignItems: "center", gap: "15px" }}>
+        <div style={{ background: "rgba(59, 130, 246, 0.1)", padding: "8px 16px", borderRadius: "20px", color: "#3b82f6", fontWeight: "800", fontSize: "13px", letterSpacing: "1px", display: "flex", alignItems: "center", gap: "6px", textTransform: "uppercase" }}><Code size={16} /> Personal Money Management System</div>
+        <div style={{ textAlign: "center", marginTop: "10px" }}><p style={{ margin: "0", fontSize: "14px", color: "#64748b", fontWeight: "500" }}>Designed & Engineered by</p><h3 style={{ margin: "8px 0", fontSize: "26px", color: "#0f172a", fontWeight: "900", letterSpacing: "-0.5px" }}>Venkata Pavan Kumar Amarthaluri</h3></div>
         <div style={{ display: "flex", gap: "15px", marginTop: "15px", flexWrap: "wrap", justifyContent: "center" }}>
-          <a href="mailto:pavanvenkat63@gmail.com" style={{ 
-            display: "flex", alignItems: "center", gap: "8px", 
-            padding: "12px 24px", background: "white", color: "#475569", 
-            borderRadius: "12px", textDecoration: "none", fontWeight: "700", 
-            border: "1px solid #cbd5e1", boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
-            transition: "all 0.2s ease"
-          }}>
-            <Mail size={18} color="#f59e0b" /> pavanvenkat63@gmail.com
-          </a>
-
-          <a href="https://hub.subhamsnetworks.in/" target="_blank" rel="noopener noreferrer" style={{ 
-            display: "flex", alignItems: "center", gap: "8px", 
-            padding: "12px 24px", background: "#3b82f6", color: "white", 
-            borderRadius: "12px", textDecoration: "none", fontWeight: "700", 
-            boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
-            transition: "all 0.2s ease"
-          }}>
-            <ExternalLink size={18} /> Subhams Hub
-          </a>
+          <a href="mailto:pavanvenkat63@gmail.com" style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px 24px", background: "white", color: "#475569", borderRadius: "12px", textDecoration: "none", fontWeight: "700", border: "1px solid #cbd5e1", boxShadow: "0 2px 4px rgba(0,0,0,0.02)", transition: "all 0.2s ease" }}><Mail size={18} color="#f59e0b" /> pavanvenkat63@gmail.com</a>
+          <a href="https://hub.subhamsnetworks.in/" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px 24px", background: "#3b82f6", color: "white", borderRadius: "12px", textDecoration: "none", fontWeight: "700", boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)", transition: "all 0.2s ease" }}><ExternalLink size={18} /> Subhams Hub</a>
         </div>
-
-        <p style={{ margin: "25px 0 0 0", fontSize: "13px", color: "#94a3b8", fontWeight: "500" }}>
-          © {new Date().getFullYear()} Subhams PMMS. All Rights Reserved.
-        </p>
+        <p style={{ margin: "25px 0 0 0", fontSize: "13px", color: "#94a3b8", fontWeight: "500" }}>© {new Date().getFullYear()} Subhams PMMS. All Rights Reserved.</p>
       </footer>
       <div style={{ textAlign: 'center', marginTop: '40px', paddingBottom: '25px', position: 'relative' }}>
-        <style>
-          {`
-            @keyframes premium-shine { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
-            @keyframes float-sparkle { 0%, 100% { transform: translateY(0px) scale(0.8); opacity: 0.4; } 50% { transform: translateY(-4px) scale(1.2); opacity: 1; filter: drop-shadow(0 0 6px #fbbf24); } }
-            @keyframes line-breathe { 0%, 100% { width: 30px; opacity: 0.3; } 50% { width: 60px; opacity: 0.8; box-shadow: 0 0 10px #3b82f6; } }
-
-            .subhams-brand-text {
-              background: linear-gradient(90deg, #3b82f6, #a855f7, #ec4899, #3b82f6);
-              background-size: 200% auto;
-              color: transparent;
-              -webkit-background-clip: text;
-              background-clip: text;
-              animation: premium-shine 3.5s linear infinite;
-              font-weight: 900;
-              font-size: 14px;
-              letter-spacing: 2px;
-            }
-          `}
-        </style>
-        
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-          <span style={{ animation: 'float-sparkle 2s ease-in-out infinite', fontSize: '13px' }}>✨</span>
-          <p style={{ fontSize: '10px', color: '#64748b', fontWeight: '800', margin: 0, letterSpacing: '1.5px' }}>
-            POWERED BY <span className="subhams-brand-text">SUBHAMS</span>
-          </p>
-          <span style={{ animation: 'float-sparkle 2s ease-in-out infinite 1s', fontSize: '13px' }}>✨</span>
-        </div>
-        <div style={{ 
-            height: '3px', background: 'linear-gradient(90deg, transparent, #3b82f6, #a855f7, transparent)', 
-            margin: '8px auto 0 auto', borderRadius: '10px', animation: 'line-breathe 3s ease-in-out infinite' 
-        }}></div>
+        <style>{`@keyframes premium-shine { 0% { background-position: -200% center; } 100% { background-position: 200% center; } } @keyframes float-sparkle { 0%, 100% { transform: translateY(0px) scale(0.8); opacity: 0.4; } 50% { transform: translateY(-4px) scale(1.2); opacity: 1; filter: drop-shadow(0 0 6px #fbbf24); } } @keyframes line-breathe { 0%, 100% { width: 30px; opacity: 0.3; } 50% { width: 60px; opacity: 0.8; box-shadow: 0 0 10px #3b82f6; } } .subhams-brand-text { background: linear-gradient(90deg, #3b82f6, #a855f7, #ec4899, #3b82f6); background-size: 200% auto; color: transparent; -webkit-background-clip: text; background-clip: text; animation: premium-shine 3.5s linear infinite; font-weight: 900; font-size: 14px; letter-spacing: 2px; }`}</style>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><span style={{ animation: 'float-sparkle 2s ease-in-out infinite', fontSize: '13px' }}>✨</span><p style={{ fontSize: '10px', color: '#64748b', fontWeight: '800', margin: 0, letterSpacing: '1.5px' }}>POWERED BY <span className="subhams-brand-text">SUBHAMS</span></p><span style={{ animation: 'float-sparkle 2s ease-in-out infinite 1s', fontSize: '13px' }}>✨</span></div>
+        <div style={{ height: '3px', background: 'linear-gradient(90deg, transparent, #3b82f6, #a855f7, transparent)', margin: '8px auto 0 auto', borderRadius: '10px', animation: 'line-breathe 3s ease-in-out infinite' }}></div>
       </div>
    <InstallPopup />
     </div>
