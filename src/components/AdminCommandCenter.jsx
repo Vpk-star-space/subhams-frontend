@@ -21,6 +21,7 @@ export default function AdminCommandCenter({ token, onBack }) {
 
     useEffect(() => {
         fetchAdminData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const fetchAdminData = async () => {

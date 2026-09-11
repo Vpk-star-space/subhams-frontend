@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Ba
 import { GoogleLogin } from '@react-oauth/google';
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas"; 
-import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code, User, Bell, Check, X } from 'lucide-react'; 
+import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code, User, Bell, BellOff, Check, X } from 'lucide-react'; 
 import InstallPopup from './components/InstallPopup';
 import AdminCommandCenter from './components/AdminCommandCenter';
 
@@ -113,11 +113,12 @@ function App() {
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [refreshToken, setRefreshToken] = useState(localStorage.getItem("refreshToken"));
   
-  // 🟢 SMART PROFILE & LANGUAGE STATE
+  // 🟢 SMART PROFILE, LANGUAGE & SILENT MODE STATE
   const [userProfile, setUserProfile] = useState(() => JSON.parse(localStorage.getItem('pmms_user') || '{"username":"","email":"","preferred_language":"en"}'));
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [editName, setEditName] = useState("");
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [isSilenced, setIsSilenced] = useState(localStorage.getItem("notifications_silenced") === "true");
 
   const [email, setEmail] = useState(""); 
   const [username, setUsername] = useState("");
@@ -151,7 +152,6 @@ function App() {
   const formRef = useRef(null); 
   const [isAdminView, setIsAdminView] = useState(false);
 
-  // 🟢 BUG FIX: Verify actual browser push subscription state on mount and sync state
   useEffect(() => {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       navigator.serviceWorker.ready.then(reg => {
@@ -416,16 +416,15 @@ function App() {
               const updated = { ...userProfile, preferred_language: lang };
               setUserProfile(updated);
               localStorage.setItem("pmms_user", JSON.stringify(updated));
-              alert(lang === 'te' ? "✅ భాష విజయవంతంగా తెలుగుకు మార్చబడింది!" : "✅ Language updated to English!");
           } else {
-              alert("Failed to update language.");
+              console.error("Failed to update language.");
           }
       } catch (err) {
-          alert("Network error.");
+          console.error("Network error.");
       }
   };
 
-  // 🟢 SETUP PUSH NOTIFICATIONS USING PROFILE LANGUAGE SETTING
+  // 🟢 SETUP PUSH NOTIFICATIONS USING PROFILE LANGUAGE
   const setupPushNotifications = async () => {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
           alert("Push notifications are not supported by your browser.");
@@ -451,6 +450,8 @@ function App() {
           });
 
           setPushEnabled(true);
+          setIsSilenced(false);
+          localStorage.removeItem("notifications_silenced");
           alert(userProfile.preferred_language === 'te' ? "✅ నోటిఫికేషన్‌లు ప్రారంభించబడ్డాయి!" : "✅ Notifications Enabled! Welcome alert sent.");
       } catch (error) {
           console.error("Error setting up push notifications:", error);
@@ -458,8 +459,8 @@ function App() {
       }
   };
 
-  // 🟢 TURN OFF / SILENT NOTIFICATIONS (Unsubscribes so banner shows again)
-  const disablePushNotifications = async () => {
+  // 🟢 TURN OFF NOTIFICATIONS (Two distinct choices: Silent vs Fully Off)
+  const disablePushNotifications = async (silentMode = false) => {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
       try {
           const registration = await navigator.serviceWorker.ready;
@@ -468,7 +469,16 @@ function App() {
               await subscription.unsubscribe();
           }
           setPushEnabled(false);
-          alert("🔕 Notifications turned off. Banner is now visible again.");
+
+          if (silentMode) {
+              setIsSilenced(true);
+              localStorage.setItem("notifications_silenced", "true");
+              alert("🔕 Notifications set to Silent Mode. The banner will stay hidden.");
+          } else {
+              setIsSilenced(false);
+              localStorage.removeItem("notifications_silenced");
+              alert("🔕 Notifications turned off. You can enable them again from the banner.");
+          }
       } catch (error) {
           console.error("Error disabling push notifications:", error);
           alert("Failed to turn off notifications.");
@@ -502,7 +512,6 @@ function App() {
          }
       }
 
-      // 🟢 Trigger lazy behavior-based smart notification evaluation on app sync
       fetch(`${API}/notifications/check-behavior`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
@@ -931,7 +940,7 @@ function App() {
               </button>
           )}
 
-          {/* 🟢 CLEAN MINIMALIST USER BADGE (No text underneath, profile name is inside the modal) */}
+          {/* 🟢 CLEAN MINIMALIST USER BADGE (Only single circular icon) */}
           <div 
             onClick={() => { setEditName(userProfile.username); setShowProfileModal(true); }}
             style={{ 
@@ -979,7 +988,7 @@ function App() {
                         <Check size={18}/> Save Name
                     </button>
 
-                    {/* 🟢 LANGUAGE PREFERENCE SELECTOR */}
+                    {/* 🟢 PROFILE LANGUAGE PREFERENCE */}
                     <div>
                         <label style={{ fontSize: "12px", fontWeight: "bold", color: "#3b82f6", marginBottom: "5px", display: "block" }}>Notification Language / భాష</label>
                         <select 
@@ -998,18 +1007,46 @@ function App() {
                         <h3 style={{ margin: "0 0 10px 0", fontSize: "16px", color: "#0f172a" }}>Smart Alerts</h3>
                         <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 15px 0", lineHeight: "1.4" }}>Receive real-time budget and transaction reminders based on your preferred language.</p>
                         
-                        {/* 🟢 CONDITIONAL NOTIFICATION TOGGLE (Active vs Turn Off / Show Banner) */}
+                        {/* 🟢 SILENT MODE / OFF LOGIC */}
                         {pushEnabled ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#f0fdf4", padding: "10px", borderRadius: "8px", color: "#10b981", fontWeight: "bold", fontSize: "13px" }}>
                                     <Bell size={16} /> Notifications Active 🟢
                                 </div>
-                                <button 
-                                    onClick={disablePushNotifications} 
-                                    style={{ width: "100%", padding: "10px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "13px" }}
-                                >
-                                    Turn Off Notifications (Show Banner Again)
-                                </button>
+                                <div style={{ display: "flex", gap: "10px" }}>
+                                    <button 
+                                        onClick={() => disablePushNotifications(true)} 
+                                        style={{ flex: 1, padding: "10px", background: "#f59e0b", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}
+                                    >
+                                        <BellOff size={14}/> Silent Mode
+                                    </button>
+                                    <button 
+                                        onClick={() => disablePushNotifications(false)} 
+                                        style={{ flex: 1, padding: "10px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}
+                                    >
+                                        <X size={14}/> Turn Off Fully
+                                    </button>
+                                </div>
+                            </div>
+                        ) : isSilenced ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#fef3c7", padding: "10px", borderRadius: "8px", color: "#d97706", fontWeight: "bold", fontSize: "13px" }}>
+                                    <BellOff size={16} /> Notifications Silenced 🔕
+                                </div>
+                                <div style={{ display: "flex", gap: "10px" }}>
+                                    <button 
+                                        onClick={setupPushNotifications} 
+                                        style={{ flex: 1, padding: "10px", background: "#10b981", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}
+                                    >
+                                        <Bell size={14}/> Turn On
+                                    </button>
+                                    <button 
+                                        onClick={() => { setIsSilenced(false); localStorage.removeItem("notifications_silenced"); setShowProfileModal(false); }} 
+                                        style={{ flex: 1, padding: "10px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "12px", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}
+                                    >
+                                        <X size={14}/> Turn Off Fully
+                                    </button>
+                                </div>
                             </div>
                         ) : (
                             <button 
@@ -1049,7 +1086,6 @@ function App() {
           </div>
         )}
 
-        {/* 🟢 NEW: BIG DASHBOARD GREETING */}
         <div style={{ marginBottom: '25px', marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <h2 style={{ margin: 0, fontSize: '28px', color: '#0f172a', fontWeight: '900', letterSpacing: '-0.5px' }}>
                 Hello, <span style={{ color: '#3b82f6' }}>{userProfile.username || "User"}</span> 👋
@@ -1059,16 +1095,27 @@ function App() {
             </p>
         </div>
 
-        {/* 🔔 SMART NOTIFICATION BANNER (Hides if already enabled) */}
-        {!pushEnabled && (
-            <div style={{ background: "linear-gradient(135deg, #2563eb, #1e3a8a)", borderRadius: "16px", padding: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "25px", color: "white", boxShadow: "0 10px 25px rgba(37, 99, 235, 0.25)" }}>
+        {/* 🔔 SMART NOTIFICATION BANNER (Hides if enabled OR if explicitly silenced) */}
+        {!pushEnabled && !isSilenced && (
+            <div style={{ background: "linear-gradient(135deg, #2563eb, #1e3a8a)", borderRadius: "16px", padding: "20px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "25px", color: "white", boxShadow: "0 10px 25px rgba(37, 99, 235, 0.25)", flexWrap: "wrap", gap: "15px" }}>
                 <div>
                     <h3 style={{ margin: "0 0 5px 0", fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}><Bell size={18} color="#fcd34d" /> Enable Smart Alerts</h3>
-                    <p style={{ margin: 0, fontSize: "13px", color: "#bfdbfe", maxWidth: "80%" }}>Get critical budget warnings and updates even when the app is closed.</p>
+                    <p style={{ margin: 0, fontSize: "13px", color: "#bfdbfe", maxWidth: "100%" }}>Get critical budget warnings and updates even when the app is closed.</p>
                 </div>
-                <button onClick={setupPushNotifications} style={{ background: "white", color: "#1e3a8a", border: "none", padding: "10px 16px", borderRadius: "8px", fontWeight: "bold", fontSize: "13px", cursor: "pointer", whiteSpace: "nowrap" }}>
-                    Enable
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    {/* 🟢 LANGUAGE SELECTION DROPDOWN IN BANNER */}
+                    <select 
+                        value={userProfile.preferred_language || 'en'} 
+                        onChange={(e) => updateLanguagePreference(e.target.value)}
+                        style={{ padding: "8px", borderRadius: "8px", border: "none", outline: "none", fontSize: "13px", fontWeight: "bold", background: "rgba(255,255,255,0.2)", color: "white", cursor: "pointer" }}
+                    >
+                        <option value="en" style={{color: "black"}}>English</option>
+                        <option value="te" style={{color: "black"}}>తెలుగు (Telugu)</option>
+                    </select>
+                    <button onClick={setupPushNotifications} style={{ background: "white", color: "#1e3a8a", border: "none", padding: "10px 16px", borderRadius: "8px", fontWeight: "bold", fontSize: "13px", cursor: "pointer", whiteSpace: "nowrap" }}>
+                        Enable
+                    </button>
+                </div>
             </div>
         )}
 
@@ -1399,6 +1446,7 @@ const smStyles = {
     subtitle: { color: '#cbd5e1', fontSize: '16px', lineHeight: '1.6', margin: '0 0 30px 0' },
     timePanelContainer: { display: 'flex', flexDirection: window.innerWidth < 500 ? 'column' : 'row', width: '100%', gap: '15px', marginBottom: '30px' },
     liveTimeBox: { flex: 1, backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '15px', borderTop: '4px solid #f59e0b' },
+    restorePanel: { flex: 1, backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '15px', borderTop: '4px solid #10b981' },
     timeLabel: { color: '#94a3b8', fontSize: '11px', fontWeight: '700', letterSpacing: '1px', marginBottom: '8px' },
     liveTimeValue: { color: '#f59e0b', fontSize: '20px', fontWeight: '900', letterSpacing: '1px' },
     restoreTime: { color: '#10b981', fontSize: '20px', fontWeight: '900', letterSpacing: '0.5px' },
