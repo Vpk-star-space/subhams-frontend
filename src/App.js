@@ -3,13 +3,13 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Ba
 import { GoogleLogin } from '@react-oauth/google';
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas"; 
-import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code } from 'lucide-react'; 
+import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code, User, Bell, Check, X } from 'lucide-react'; 
 import InstallPopup from './components/InstallPopup';
-
 
 const isMaintenanceMode = false; 
 const targetRestoreTime = "02-06-2026 at 10:00 AM"; 
 const API = process.env.REACT_APP_BACKEND_URL || "https://subhams-backend.onrender.com/api";
+const PUBLIC_VAPID_KEY = process.env.REACT_APP_VAPID_PUBLIC_KEY || "YOUR_PUBLIC_VAPID_KEY_HERE"; 
 
 const formatDate = (dateString) => {
   if (!dateString) return "";
@@ -38,18 +38,15 @@ const base64ToBuffer = (b64) => Uint8Array.from(atob(b64), c => c.charCodeAt(0))
 
 const MaintenanceScreen = () => {
     const [currentTime, setCurrentTime] = useState(new Date());
-
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
     }, []);
-
     const liveTimeString = currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
     return (
         <div style={smStyles.container}>
             <div style={smStyles.card}>
-           
                 <h1 style={smStyles.brandTitle}>SUBHAMS <span style={{color: '#f59e0b'}}>PMMS</span></h1>
                 <div style={smStyles.secureBadge}>🔒 SECURE MAINTENANCE / సురక్షిత నిర్వహణ</div>
                 <p style={smStyles.subtitle}>
@@ -71,7 +68,6 @@ const MaintenanceScreen = () => {
                     <strong>- Venkata Pavan Kumar Amarthaluri</strong>
                 </p>
             </div>
-              
         </div>
     );
 };
@@ -96,6 +92,17 @@ const AppLockScreen = ({ onUnlock }) => (
   </div>
 );
 
+const urlBase64ToUint8Array = (base64String) => {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+};
+
 function App() {
   const [isServerWaking, setIsServerWaking] = useState(!!localStorage.getItem("token")); 
   const [authMode, setAuthMode] = useState("login"); 
@@ -105,6 +112,12 @@ function App() {
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [refreshToken, setRefreshToken] = useState(localStorage.getItem("refreshToken"));
   
+  // 🟢 SMART PROFILE STATE
+  const [userProfile, setUserProfile] = useState(() => JSON.parse(localStorage.getItem('pmms_user') || '{"username":"","email":""}'));
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [pushEnabled, setPushEnabled] = useState(false);
+
   const [email, setEmail] = useState(""); 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -224,80 +237,57 @@ function App() {
     } catch (err) { alert("Unlock failed. Please try again."); } 
   };
 
-const login = async () => {
+  const login = async () => {
     if (lockoutTimer > 0) return alert("Account locked. Please wait for the timer.");
     if (!username || !password) return alert("Please enter both Username and Password.");
     
     setIsServerWaking(true); 
     try {
-      console.log("\n=== 🖥️ FRONTEND DEBUG TRACKER START ===");
-      console.log("1. Sending login request to server...");
-
       const res = await fetch(`${API}/auth/login`, { 
         method: "POST", 
         headers: { "Content-Type": "application/json" }, 
         body: JSON.stringify({ username, password }) 
       });
 
-      console.log("2. Server responded with Status Code:", res.status);
-
-      // Catch Express Rate Limiter if it sends plain text
       const contentType = res.headers.get("content-type");
       if (res.status === 429 && (!contentType || !contentType.includes("json"))) {
-         const textMsg = await res.text();
-         console.log("❌ Firewall Block (Text):", textMsg);
-         console.log("=== 🖥️ FRONTEND DEBUG TRACKER END ===\n");
          return alert("⚠️ Server Firewall: You clicked login too many times. Please wait a few minutes.");
       }
       
       const data = await res.json();
-      console.log("3. Data received from server:", data);
       
       if (res.ok && data.accessToken) { 
-        console.log("✅ SUCCESS: Logging user in!");
         setFailedAttempts(0);
         localStorage.removeItem('localFailedAttempts');
         localStorage.setItem("token", data.accessToken); 
         localStorage.setItem("refreshToken", data.refreshToken);
+
+        const profileData = { username: data.user?.username || username, email: data.user?.email || email };
+        localStorage.setItem("pmms_user", JSON.stringify(profileData));
+        setUserProfile(profileData);
+
         setToken(data.accessToken); 
         setRefreshToken(data.refreshToken);
         if (localStorage.getItem("subhams_app_lock") === "true") setIsAppLocked(true);
-        console.log("=== 🖥️ FRONTEND DEBUG TRACKER END ===\n");
 
       } else { 
-        console.log("❌ FAILED: Server rejected login.");
-        
-        // Scenario A: The Database specifically locked the user account
         if (res.status === 429 && data.error && data.error.includes("Account locked")) {
-          console.log("🔒 Action: Triggering Red Shield Lockout Overlay.");
           triggerLockout();
-          console.log("=== 🖥️ FRONTEND DEBUG TRACKER END ===\n");
           return;
         }
-
-        // Scenario B: The Express Rate Limiter blocked the IP (testing too fast)
         if (res.status === 429) {
-          console.log("⏳ Action: Network cooldown warning.");
-          console.log("=== 🖥️ FRONTEND DEBUG TRACKER END ===\n");
           return alert(`⚠️ Network Firewall: ${data.error || data.message || "Too many attempts. Wait a few minutes before trying again."}`);
         }
-
-        // Scenario C: Standard wrong password
         const newAttempts = failedAttempts + 1;
-        console.log(`⚠️ Action: Incrementing bad attempts. Now at ${newAttempts}/5`);
-        
         if (newAttempts >= 5) { 
-          console.log("🔒 Action: 5 bad attempts reached. Triggering Red Shield.");
           triggerLockout(); 
         } else {
           setFailedAttempts(newAttempts);
           localStorage.setItem('localFailedAttempts', newAttempts.toString());
           alert(`${data.error || "Login failed"}. ⚠️ ${5 - newAttempts} attempt(s) left.`);
         }
-        console.log("=== 🖥️ FRONTEND DEBUG TRACKER END ===\n");
       }
     } catch (err) { 
-      console.error("❌ FRONTEND CATCH ERROR:", err);
       alert("Backend server is offline or unreachable."); 
     } finally { 
       setIsServerWaking(false); 
@@ -313,6 +303,11 @@ const login = async () => {
       const data = await res.json();
       if (res.ok) {
         localStorage.setItem("token", data.accessToken); localStorage.setItem("refreshToken", data.refreshToken);
+        
+        const profileData = { username: data.user?.username || "Google User", email: data.user?.email || "" };
+        localStorage.setItem("pmms_user", JSON.stringify(profileData));
+        setUserProfile(profileData);
+
         setToken(data.accessToken); setRefreshToken(data.refreshToken);
         
         if (localStorage.getItem("subhams_app_lock") === "true") setIsAppLocked(true);
@@ -341,86 +336,119 @@ const login = async () => {
     } catch (err) { alert("Backend server is offline."); } finally { setIsServerWaking(false); }
   };
 
-const handleForgotPassword = async () => {
+  const handleForgotPassword = async () => {
     if (!email) return alert("Please enter your registered email address.");
     setIsServerWaking(true);
     try {
-      const res = await fetch(`${API}/auth/forgot-password`, { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify({ email }) 
-      });
-      
+      const res = await fetch(`${API}/auth/forgot-password`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
       const data = await res.json();
-      
-      if (res.ok) {
-        alert("OTP sent! Check your email."); 
-        setAuthMode("reset_otp"); 
-      } else {
-        alert(data.error || "Failed to send OTP."); 
-      }
-    } catch (err) { 
-      alert("Connection error: Cannot reach the server."); 
-    } finally { 
-      setIsServerWaking(false); 
-    }
+      if (res.ok) { alert("OTP sent! Check your email."); setAuthMode("reset_otp"); } else { alert(data.error || "Failed to send OTP."); }
+    } catch (err) { alert("Connection error: Cannot reach the server."); } finally { setIsServerWaking(false); }
   };
 
-const handleResetPassword = async () => {
+  const handleResetPassword = async () => {
     if (!otp || !newPassword) return alert("Please enter the OTP and your new password.");
     setIsServerWaking(true);
     try {
-      const res = await fetch(`${API}/auth/reset-password`, { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" }, 
-        body: JSON.stringify({ email, otp, newPassword }) 
-      });
-      
+      const res = await fetch(`${API}/auth/reset-password`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, otp, newPassword }) });
       const data = await res.json();
-      
       if (res.ok) {
         alert("Password reset successful! Please log in."); 
-        setAuthMode("login"); 
-        setOtp(""); 
-        setNewPassword(""); 
-        setPassword(""); 
-
-        // 🟢 ADD THESE 4 LINES TO DROP THE RED SHIELD!
-        setLockoutTimer(0);
-        localStorage.removeItem('lockoutUntil');
-        setFailedAttempts(0);
-        localStorage.removeItem('localFailedAttempts');
-
-      } else {
-        alert(data.error || data.message || "Invalid OTP."); 
-      }
-    } catch (err) { 
-      alert("Server is offline."); 
-    } finally { 
-      setIsServerWaking(false); 
-    }
+        setAuthMode("login"); setOtp(""); setNewPassword(""); setPassword(""); 
+        setLockoutTimer(0); localStorage.removeItem('lockoutUntil');
+        setFailedAttempts(0); localStorage.removeItem('localFailedAttempts');
+      } else { alert(data.error || data.message || "Invalid OTP."); }
+    } catch (err) { alert("Server is offline."); } finally { setIsServerWaking(false); }
   };
 
   const logout = () => { 
-    localStorage.removeItem("token"); localStorage.removeItem("refreshToken");
-    setToken(null); setRefreshToken(null);
+    localStorage.removeItem("token"); localStorage.removeItem("refreshToken"); localStorage.removeItem("pmms_user");
+    setToken(null); setRefreshToken(null); setUserProfile({username:"", email:""});
     setTransactions([]); setAllTransactions([]); setMonthlyChartData([]); setInsights(null); 
     setAuthMode("login");
   };
 
+  const updateProfileName = async () => {
+      if (!editName.trim()) return alert("Name cannot be empty");
+      try {
+          const res = await fetch(`${API}/auth/update-profile`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ username: editName })
+          });
+          if (res.ok) {
+              const updatedProfile = { ...userProfile, username: editName };
+              setUserProfile(updatedProfile);
+              localStorage.setItem("pmms_user", JSON.stringify(updatedProfile));
+              alert("✅ Name updated successfully!"); 
+              setShowProfileModal(false);
+          } else {
+              alert("Failed to update name");
+          }
+      } catch (err) {
+          alert("Network error.");
+      }
+  };
+
+  const setupPushNotifications = async () => {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+          alert("Push notifications are not supported by your browser.");
+          return;
+      }
+      try {
+          const permission = await Notification.requestPermission();
+          if (permission !== 'granted') {
+              alert("You denied permission for notifications.");
+              return;
+          }
+
+          const registration = await navigator.serviceWorker.register('/sw.js');
+          const subscription = await registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+          });
+
+          await fetch(`${API}/notifications/subscribe`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify(subscription)
+          });
+
+          setPushEnabled(true);
+          alert("✅ Notifications Enabled! You will now receive alerts even when the app is closed.");
+      } catch (error) {
+          console.error("Error setting up push notifications:", error);
+          alert("Failed to enable notifications. Ensure your site uses HTTPS.");
+      }
+  };
+
+  // 🟢 FIX: Added the /auth/me fetch to instantly sync your name with the database when the app loads!
   const fetchAllData = useCallback(async () => {
     if (!token || token === "null" || isMaintenanceMode || isAppLocked) { setIsServerWaking(false); return; }
     setIsServerWaking(true);
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const [tRes, mRes, iRes] = await Promise.all([
-        fetch(`${API}/transactions`, { headers }), fetch(`${API}/transactions/monthly`, { headers }), fetch(`${API}/transactions/insights`, { headers })
+      
+      const [tRes, mRes, iRes, pRes] = await Promise.all([
+        fetch(`${API}/transactions`, { headers }), 
+        fetch(`${API}/transactions/monthly`, { headers }), 
+        fetch(`${API}/transactions/insights`, { headers }),
+        fetch(`${API}/auth/me`, { headers }) // 🟢 NEW: Grabs your real name from the backend!
       ]);
 
       if (tRes.status === 401 || tRes.status === 403) { 
         const newToken = await refreshAuthToken();
         if (newToken) fetchAllData(); 
         return; 
+      }
+
+      // 🟢 Update the profile permanently in the app memory
+      if (pRes.ok) {
+         const pData = await pRes.json();
+         if (pData.user) {
+             setUserProfile(pData.user);
+             localStorage.setItem("pmms_user", JSON.stringify(pData.user));
+         }
       }
 
       const tData = await tRes.json(); const mData = await mRes.json(); const iData = await iRes.json();
@@ -687,8 +715,7 @@ const handleResetPassword = async () => {
 
   if (isMaintenanceMode) return <MaintenanceScreen />;
 
-// 🟢 1. ONLY block the full screen if they are not logged in yet!
-  if (isServerWaking && !token) return (
+  if (isServerWaking && !token) return ( 
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", backgroundColor: "#f8fafc", padding: "20px" }}>
       <style>
         {`
@@ -703,17 +730,13 @@ const handleResetPassword = async () => {
             display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; 
             text-shadow: 1px 2px 4px rgba(180, 83, 9, 0.8); 
             animation: float-up-down 2s ease-in-out infinite, coin-flip 1.5s linear infinite; 
-            /* 📱 MOBILE SIZES (Default) */
             width: 70px; height: 70px; font-size: 34px; border: 4px solid #fef08a;
           }
           .full-floor-shadow { 
             background: #000; border-radius: 50%; filter: blur(3px); 
             animation: shadow-pulse 2s ease-in-out infinite; 
-            /* 📱 MOBILE SIZES (Default) */
             width: 40px; height: 8px; margin-top: 20px;
           }
-
-          /* 💻 LAPTOP/DESKTOP UPGRADE SIZES */
           @media (min-width: 768px) {
             .full-gold-coin { width: 110px; height: 110px; font-size: 50px; border: 6px solid #fef08a; }
             .full-floor-shadow { width: 60px; height: 12px; margin-top: 30px; }
@@ -721,105 +744,57 @@ const handleResetPassword = async () => {
         `}
       </style>
       <div style={{ width: "100%", maxWidth: "420px", backgroundColor: "white", padding: "45px 25px", borderRadius: "24px", boxShadow: "0 20px 40px -10px rgba(0,0,0,0.1)", textAlign: "center", border: "1px solid #e2e8f0" }}>
-        
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "25px" }}>
           <div className="full-gold-coin">₹</div>
           <div className="full-floor-shadow"></div>
         </div>
-        
         <h1 className="brand-logo" style={{ marginBottom: "10px", fontSize: "28px" }}>SUBHAMS PMMS</h1>
         <h2 style={{ marginTop: "10px", color: "#0f172a", fontSize: "20px", fontWeight: "900" }}>Waking Servers...</h2>
         <p style={{ margin: 0, color: "#64748b", fontSize: "14px", fontWeight: "600" }}>Establishing a secure financial connection.</p>
-      
       </div>
     </div>
   );
 
-  if (token && isAppLocked) return (
-    <>
-      <style>{globalStyles}</style>
-      <AppLockScreen onUnlock={handleAppUnlock} />
-    </>
-  );
+  if (token && isAppLocked) return ( <><style>{globalStyles}</style><AppLockScreen onUnlock={handleAppUnlock} /></> );
 
- if (!token) return (
+  if (!token) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", backgroundColor: "#f1f5f9", padding: "20px" }}>
       <style>{globalStyles}</style>
 
-{/* 🟢 UPDATED: Mobile-Optimized Lockout Overlay */}
-{lockoutTimer > 0 && (
-  <div style={{ 
-    position: 'fixed', 
-    top: 0, 
-    left: 0, 
-    width: '100vw', 
-    height: '100vh', 
-    background: 'rgba(15, 23, 42, 0.98)', 
-    zIndex: 9999, 
-    display: 'flex', 
-    flexDirection: 'column', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    padding: '20px',
-    boxSizing: 'border-box',
-    textAlign: 'center'
-  }}>
-    <div style={{ background: "rgba(245, 158, 11, 0.1)", padding: "20px", borderRadius: "50%", marginBottom: "20px", border: "1px solid rgba(245, 158, 11, 0.2)" }}>
-        <Lock size={48} color="#f59e0b" />
-    </div>
-
-    <h1 style={{ fontSize: 'clamp(1.5rem, 6vw, 2.5rem)', color: 'white', marginBottom: '10px' }}>Security Checkpoint</h1>
-    
-    <div style={{ fontSize: '24px', color: '#fbbf24', fontWeight: 'bold', margin: '10px 0' }}>
-       Access restored in: {Math.floor(lockoutTimer / 60)}m {lockoutTimer % 60}s
-    </div>
-
-    <p style={{ margin: '20px 0', textAlign: 'center', maxWidth: '320px', color: '#cbd5e1', lineHeight: '1.5' }}>
-       We've temporarily limited access after multiple failed attempts. 
-       <br/><br/>
-       <strong>If this was you, please verify your identity to regain access immediately.</strong>
-    </p>
-
-    <button 
-        onClick={() => {
-            setAuthMode("forgot");
-            setLockoutTimer(0);
-            localStorage.removeItem('lockoutUntil'); 
-        }}
-        style={{ 
-            padding: '14px 28px', 
-            background: '#3b82f6', 
-            color: 'white', 
-            border: 'none', 
-            borderRadius: '12px', 
-            cursor: 'pointer', 
-            fontWeight: 'bold',
-            fontSize: '16px',
-            width: '100%',
-            maxWidth: '300px',
-            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' 
-        }}
-    >
-        Unlock via Email
-    </button>
-  </div>
-)}
+      {lockoutTimer > 0 && ( 
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(15, 23, 42, 0.98)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', textAlign: 'center' }}>
+          <div style={{ background: "rgba(245, 158, 11, 0.1)", padding: "20px", borderRadius: "50%", marginBottom: "20px", border: "1px solid rgba(245, 158, 11, 0.2)" }}>
+              <Lock size={48} color="#f59e0b" />
+          </div>
+          <h1 style={{ fontSize: 'clamp(1.5rem, 6vw, 2.5rem)', color: 'white', marginBottom: '10px' }}>Security Checkpoint</h1>
+          <div style={{ fontSize: '24px', color: '#fbbf24', fontWeight: 'bold', margin: '10px 0' }}>
+              Access restored in: {Math.floor(lockoutTimer / 60)}m {lockoutTimer % 60}s
+          </div>
+          <p style={{ margin: '20px 0', textAlign: 'center', maxWidth: '320px', color: '#cbd5e1', lineHeight: '1.5' }}>
+              We've temporarily limited access after multiple failed attempts. <br/><br/>
+              <strong>If this was you, please verify your identity to regain access immediately.</strong>
+          </p>
+          <button 
+              onClick={() => { setAuthMode("forgot"); setLockoutTimer(0); localStorage.removeItem('lockoutUntil'); }}
+              style={{ padding: '14px 28px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', width: '100%', maxWidth: '300px', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}
+          >
+              Unlock via Email
+          </button>
+        </div>
+      )}
+      
       <div style={{ width: "100%", maxWidth: "400px", backgroundColor: "white", padding: "40px 25px", borderRadius: "16px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", textAlign: "center" }}>
         <h1 className="brand-logo" style={{ marginBottom: "5px", fontSize: "2.5rem" }}>SUBHAMS</h1>
-        
         
         {authMode === "login" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="Username or Email" value={username} onChange={e => setUsername(e.target.value)} disabled={lockoutTimer > 0} />
             <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} disabled={lockoutTimer > 0} />
-            
             <p style={{ margin: "0", textAlign: "right", fontSize: "13px", color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("forgot")}>Forgot Password?</p>
-
             <button style={{ padding: "15px", background: lockoutTimer > 0 ? "#94a3b8" : "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }} onClick={login} disabled={lockoutTimer > 0}>Login</button>
             <p style={{ fontSize: "14px", margin: "5px 0" }}>Don't have an account? <span style={{ color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("register")}>Create one here</span></p>
             <div style={{ margin: "10px 0", color: "#cbd5e1", fontSize: "14px" }}>────── OR ──────</div>
             <div style={{ display: "flex", justifyContent: "center" }}><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => alert("Google Error")} /></div>
-         
           </div>
         )}
 
@@ -864,11 +839,9 @@ const handleResetPassword = async () => {
             <p style={{ fontSize: "14px", margin: "10px 0", cursor: "pointer" }} onClick={() => setAuthMode("forgot")}><span style={{ color: "#ef4444" }}>Cancel</span></p>
           </div>
         )}
-
       </div>
      <InstallPopup />
     </div>
-    
   );
 
   return (
@@ -881,60 +854,93 @@ const handleResetPassword = async () => {
         </div>
       </div>
       
-      
       <nav className="nav-bar">
         <h2 className="brand-logo" style={{ fontSize: "1.8rem" }}>Subhams</h2>
         
-        <div style={{ display: "flex", gap: "10px" }}>
-          {localStorage.getItem("subhams_app_lock") !== "true" && (
-            <button style={{ padding: "10px 15px", background: "#10b981", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }} onClick={enableAppLock}>
-               <Lock size={16} /> Enable App Lock
-            </button>
-          )}
-          <button style={{ padding: "10px 20px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }} onClick={logout}>Logout</button>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <div 
+            onClick={() => { setEditName(userProfile.username); setShowProfileModal(true); }}
+            style={{ display: "flex", alignItems: "center", gap: "10px", background: "rgba(255, 255, 255, 0.1)", padding: "6px 14px", borderRadius: "30px", cursor: "pointer", border: "1px solid rgba(255,255,255,0.2)", transition: "0.2s" }}
+          >
+            <div style={{ width: "26px", height: "26px", borderRadius: "50%", background: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", color: "#0f172a", fontSize: "14px" }}>
+                {userProfile.username ? userProfile.username.charAt(0).toUpperCase() : <User size={14}/>}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "12px", fontWeight: "bold", lineHeight: "1" }}>{userProfile.username || "My Account"}</span>
+                <span style={{ fontSize: "9px", color: "#94a3b8" }}>Settings & Alerts</span>
+            </div>
+          </div>
+          <button style={{ padding: "10px", background: "transparent", color: "#ef4444", border: "1px solid #ef4444", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }} onClick={logout}>Exit</button>
         </div>
       </nav>
-<div className="container" style={{ position: 'relative', minHeight: '65vh' }}>
+
+      {/* 🟢 PROFILE & NOTIFICATIONS MODAL */}
+      {showProfileModal && (
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100vh", background: "rgba(15, 23, 42, 0.7)", backdropFilter: "blur(5px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "20px" }}>
+            <div style={{ background: "white", padding: "30px", borderRadius: "20px", width: "100%", maxWidth: "400px", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", position: "relative" }}>
+                <X size={24} color="#64748b" style={{ position: "absolute", top: "20px", right: "20px", cursor: "pointer" }} onClick={() => setShowProfileModal(false)} />
+                
+                <h2 style={{ margin: "0 0 20px 0", color: "#0f172a", fontSize: "22px", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <User size={24} color="#3b82f6" /> Profile Settings
+                </h2>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+                    <div>
+                        <label style={{ fontSize: "12px", fontWeight: "bold", color: "#64748b", marginBottom: "5px", display: "block" }}>Registered Email (Locked)</label>
+                        <div style={{ padding: "12px 15px", background: "#f1f5f9", borderRadius: "8px", color: "#475569", fontSize: "14px", border: "1px dashed #cbd5e1" }}>
+                            <Mail size={14} style={{ marginRight: "8px", verticalAlign: "middle" }}/> {userProfile.email || "Google Authenticated"}
+                        </div>
+                    </div>
+                    <div>
+                        <label style={{ fontSize: "12px", fontWeight: "bold", color: "#3b82f6", marginBottom: "5px", display: "block" }}>Display Name</label>
+                        <input 
+                            type="text" 
+                            value={editName} 
+                            onChange={(e) => setEditName(e.target.value)}
+                            style={{ width: "100%", padding: "12px 15px", borderRadius: "8px", border: "1px solid #93c5fd", fontSize: "14px", outline: "none", color: "#0f172a", fontWeight: "bold" }}
+                        />
+                    </div>
+                    
+                    <button onClick={updateProfileName} style={{ padding: "12px", background: "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                        <Check size={18}/> Save Name
+                    </button>
+
+                    <hr style={{ border: "0", borderTop: "1px solid #e2e8f0", margin: "10px 0" }} />
+
+                    <div>
+                        <h3 style={{ margin: "0 0 10px 0", fontSize: "16px", color: "#0f172a" }}>Smart Alerts</h3>
+                        <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 15px 0", lineHeight: "1.4" }}>Enable background push notifications to receive real-time financial alerts directly to your device, even when the app is closed.</p>
+                        
+                        <button 
+                            onClick={setupPushNotifications} 
+                            disabled={pushEnabled}
+                            style={{ width: "100%", padding: "12px", background: pushEnabled ? "#10b981" : "#f59e0b", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: pushEnabled ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", boxShadow: pushEnabled ? "none" : "0 4px 10px rgba(245, 158, 11, 0.3)" }}
+                        >
+                            <Bell size={18}/> {pushEnabled ? "Notifications Active" : "Enable Push Notifications"}
+                        </button>
+                    </div>
+
+                    {localStorage.getItem("subhams_app_lock") !== "true" && (
+                        <button style={{ padding: "12px", background: "#f8fafc", color: "#0f172a", border: "1px solid #e2e8f0", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginTop: "5px" }} onClick={() => { setShowProfileModal(false); enableAppLock(); }}>
+                            <Lock size={16} /> Enable Biometric App Lock
+                        </button>
+                    )}
+                </div>
+            </div>
+        </div>
+      )}
+
+      <div className="container" style={{ position: 'relative', minHeight: '65vh' }}>
         
-        {/* 🌟 🟢 3. PREMIUM TOP-CORNER SYNC BADGE */}
         {isServerWaking && (
-          <div style={{
-            position: "absolute", 
-            top: "15px", 
-            right: "15px", 
-            background: "rgba(255, 255, 255, 0.95)", 
-            backdropFilter: "blur(10px)",
-            display: "flex", 
-            alignItems: "center", 
-            gap: "12px", 
-            zIndex: 50, 
-            borderRadius: "50px",
-            padding: "8px 20px 8px 8px",
-            boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
-            border: "1px solid #e2e8f0"
-          }}>
+          <div style={{ position: "absolute", top: "15px", right: "15px", background: "rgba(255, 255, 255, 0.95)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", gap: "12px", zIndex: 50, borderRadius: "50px", padding: "8px 20px 8px 8px", boxShadow: "0 10px 25px rgba(0,0,0,0.15)", border: "1px solid #e2e8f0" }}>
             <style>
               {`
                 @keyframes coin-spin-fast { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } }
-                
-                .corner-gold-coin { 
-                  border-radius: 50%; 
-                  background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); 
-                  box-shadow: inset 0 0 8px rgba(180, 83, 9, 0.8), 0 4px 10px rgba(245, 158, 11, 0.4); 
-                  display: flex; align-items: center; justify-content: center; 
-                  color: #fffbeb; font-weight: 900; 
-                  text-shadow: 1px 2px 2px rgba(180, 83, 9, 0.8); 
-                  animation: coin-spin-fast 1.5s linear infinite; 
-                  width: 35px; height: 35px; font-size: 18px; border: 2px solid #fef08a;
-                  flex-shrink: 0;
-                }
+                .corner-gold-coin { border-radius: 50%; background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); box-shadow: inset 0 0 8px rgba(180, 83, 9, 0.8), 0 4px 10px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; text-shadow: 1px 2px 2px rgba(180, 83, 9, 0.8); animation: coin-spin-fast 1.5s linear infinite; width: 35px; height: 35px; font-size: 18px; border: 2px solid #fef08a; flex-shrink: 0; }
               `}
             </style>
-            
-            {/* The Tiny Spinning Coin */}
             <div className="corner-gold-coin">₹</div>
-            
-            {/* The Status Text */}
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ margin: "0", color: "#0f172a", fontSize: "14px", fontWeight: "900", letterSpacing: "0.5px" }}>Syncing...</span>
               <span style={{ margin: "0", color: "#64748b", fontSize: "10px", fontWeight: "700" }}>Waking Server</span>
@@ -942,7 +948,17 @@ const handleResetPassword = async () => {
           </div>
         )}
 
-        {/* Your normal dashboard grid continues here */}
+        {/* 🟢 NEW: BIG DASHBOARD GREETING */}
+        <div style={{ marginBottom: '25px', marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <h2 style={{ margin: 0, fontSize: '28px', color: '#0f172a', fontWeight: '900', letterSpacing: '-0.5px' }}>
+                Hello, <span style={{ color: '#3b82f6' }}>{userProfile.username || "User"}</span> 👋
+            </h2>
+            <p style={{ margin: 0, color: '#64748b', fontSize: '15px', fontWeight: '600' }}>
+                Here is your current financial overview.
+            </p>
+        </div>
+
+        {/* Dashboard Grid */}
         <div className="dashboard-grid">
           <div className="metric-card">
             <div className="metric-title">TOTAL INCOME <br/>ఆదాయం</div>
@@ -968,7 +984,6 @@ const handleResetPassword = async () => {
               <h4 style={{ margin: "0 0 8px 0" }}>💡 Subhams Insights:</h4>
               <div style={{ lineHeight: "1.5" }}>{smartMsg} <br /><small style={{ opacity: 0.8 }}>{smartMsgTe}</small></div>
             </div>
-            
           </div>
         )}
 
@@ -1112,6 +1127,7 @@ const handleResetPassword = async () => {
           </div>
         </div>
 
+        {/* Charts & Graphs */}
         <div className="action-grid" style={{ marginTop: "20px" }}>
           <div style={{ backgroundColor: "white", borderRadius: "16px", padding: "20px", border: "1px solid #e2e8f0" }}>
             <h3 style={{ textAlign: "center", marginTop: 0 }}>📊 Overview</h3>
@@ -1188,7 +1204,6 @@ const handleResetPassword = async () => {
           textTransform: "uppercase"
         }}>
           <Code size={16} /> Personal Money Management System
-     
         </div>
 
         <div style={{ textAlign: "center", marginTop: "10px" }}>
@@ -1224,27 +1239,12 @@ const handleResetPassword = async () => {
           © {new Date().getFullYear()} Subhams PMMS. All Rights Reserved.
         </p>
       </footer>
-      {/* 🟢 ULTRA-PREMIUM ANIMATED FOOTER (For all your projects) */}
       <div style={{ textAlign: 'center', marginTop: '40px', paddingBottom: '25px', position: 'relative' }}>
         <style>
           {`
-            /* 1. Sweeping Gradient Shine for the SUBHAMS text */
-            @keyframes premium-shine {
-              0% { background-position: -200% center; }
-              100% { background-position: 200% center; }
-            }
-            
-            /* 2. Floating and Glowing Animation for the Sparks */
-            @keyframes float-sparkle {
-              0%, 100% { transform: translateY(0px) scale(0.8); opacity: 0.4; }
-              50% { transform: translateY(-4px) scale(1.2); opacity: 1; filter: drop-shadow(0 0 6px #fbbf24); }
-            }
-            
-            /* 3. The Breathing Underline Glow */
-            @keyframes line-breathe {
-              0%, 100% { width: 30px; opacity: 0.3; }
-              50% { width: 60px; opacity: 0.8; box-shadow: 0 0 10px #3b82f6; }
-            }
+            @keyframes premium-shine { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+            @keyframes float-sparkle { 0%, 100% { transform: translateY(0px) scale(0.8); opacity: 0.4; } 50% { transform: translateY(-4px) scale(1.2); opacity: 1; filter: drop-shadow(0 0 6px #fbbf24); } }
+            @keyframes line-breathe { 0%, 100% { width: 30px; opacity: 0.3; } 50% { width: 60px; opacity: 0.8; box-shadow: 0 0 10px #3b82f6; } }
 
             .subhams-brand-text {
               background: linear-gradient(90deg, #3b82f6, #a855f7, #ec4899, #3b82f6);
@@ -1261,36 +1261,25 @@ const handleResetPassword = async () => {
         </style>
         
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-          {/* Left Sparkle (Animates instantly) */}
           <span style={{ animation: 'float-sparkle 2s ease-in-out infinite', fontSize: '13px' }}>✨</span>
-          
           <p style={{ fontSize: '10px', color: '#64748b', fontWeight: '800', margin: 0, letterSpacing: '1.5px' }}>
             POWERED BY <span className="subhams-brand-text">SUBHAMS</span>
           </p>
-          
-          {/* Right Sparkle (Delayed by 1s so they twinkle back and forth) */}
           <span style={{ animation: 'float-sparkle 2s ease-in-out infinite 1s', fontSize: '13px' }}>✨</span>
         </div>
-
-        {/* Beautiful Animated Glowing Underline */}
         <div style={{ 
-            height: '3px', 
-            background: 'linear-gradient(90deg, transparent, #3b82f6, #a855f7, transparent)', 
-            margin: '8px auto 0 auto', 
-            borderRadius: '10px',
-            animation: 'line-breathe 3s ease-in-out infinite' 
+            height: '3px', background: 'linear-gradient(90deg, transparent, #3b82f6, #a855f7, transparent)', 
+            margin: '8px auto 0 auto', borderRadius: '10px', animation: 'line-breathe 3s ease-in-out infinite' 
         }}></div>
-        
       </div>
    <InstallPopup />
     </div>
-    
   );
 }
 
 const smStyles = {
     container: { minHeight: '100vh', width: '100%', backgroundColor: '#020617', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif" },
-    card: { display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', backgroundColor: '#0f172a', borderRadius: '16px', padding: '40px', maxWidth: '550px', width: '100%', boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.7)', border: '1px solid #1e293b', animation: 'popIn 0.4s ease-out' },
+    card: { display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', backgroundColor: '#0f172a', borderRadius: '16px', padding: '40px', maxWidth: '550px', width: '100%', boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.7)', border: '1px solid #1e293b' },
     brandTitle: { margin: '0 0 15px 0', fontSize: '38px', color: '#ffffff', fontWeight: '900', letterSpacing: '-1px' },
     secureBadge: { display: 'inline-block', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '6px 14px', borderRadius: '50px', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', border: '1px solid rgba(16, 185, 129, 0.3)', marginBottom: '25px' },
     subtitle: { color: '#cbd5e1', fontSize: '16px', lineHeight: '1.6', margin: '0 0 30px 0' },
@@ -1300,10 +1289,6 @@ const smStyles = {
     timeLabel: { color: '#94a3b8', fontSize: '11px', fontWeight: '700', letterSpacing: '1px', marginBottom: '8px' },
     liveTimeValue: { color: '#f59e0b', fontSize: '20px', fontWeight: '900', letterSpacing: '1px' },
     restoreTime: { color: '#10b981', fontSize: '20px', fontWeight: '900', letterSpacing: '0.5px' },
-    progressContainer: { width: '100%', marginBottom: '30px' },
-    progressLabel: { display: 'flex', justifyContent: 'space-between', color: '#e2e8f0', fontSize: '13px', fontWeight: '700', marginBottom: '10px' },
-    progressBarBg: { width: '100%', height: '6px', backgroundColor: '#334155', borderRadius: '10px', overflow: 'hidden' },
-    progressBarFill: { height: '100%', backgroundColor: '#10b981', animation: 'secureFlow 2s infinite linear', boxShadow: '0 0 10px #10b981' },
     footerText: { color: '#94a3b8', fontSize: '14px', lineHeight: '1.6', margin: '0' }
 };
 
