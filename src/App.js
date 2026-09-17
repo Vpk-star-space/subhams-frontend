@@ -622,6 +622,15 @@ function App() {
     if (transactions.length === 0) return alert("No transactions to download!");
     setIsDownloading(true); 
 
+    // 🟢 TELEMETRY: Record report download
+    if (token) {
+      fetch(`${API}/notifications/track-feature`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ feature_name: "pdf_report_downloaded" })
+      }).catch(() => {});
+    }
+
     const pdfIncome = transactions.filter(t => t.type === "income").reduce((a, b) => a + Number(b.amount), 0);
     const pdfExpense = transactions.filter(t => t.type === "expense").reduce((a, b) => a + Number(b.amount), 0);
     const pdfPending = transactions.filter(t => t.type === "pending").reduce((a, b) => a + Number(b.amount), 0);
@@ -815,6 +824,15 @@ function App() {
     const { principal, startDate, endDate, interestType, rate, shareLang } = interestData;
     if (!startDate || !endDate || !principal || !rate) return alert("Please fill all fields");
 
+    // 🟢 TELEMETRY: Record interest calculation
+    if (token) {
+      fetch(`${API}/notifications/track-feature`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ feature_name: "interest_calculator_used" })
+      }).catch(() => {});
+    }
+
     const p = Number(principal);
     const r = Number(rate);
     const start = new Date(startDate);
@@ -853,7 +871,6 @@ function App() {
     
     const isTelugu = (interestResult.shareLang || interestData.shareLang) === 'te';
     
-    // 🟢 DYNAMIC RATE TEXT FOR SHARING
     const rateTextEn = interestData.interestType === 'Local' ? `${interestData.rate} Rupees per month` : `${interestData.rate}% APR`;
     const rateTextTe = interestData.interestType === 'Local' ? `నెలకు ${interestData.rate} రూపాయలు` : `${interestData.rate}% వార్షిక రేటు`;
     
@@ -944,11 +961,11 @@ function App() {
   if (isAdminView) return <AdminCommandCenter token={token} onBack={() => setIsAdminView(false)} />;
 
   if (isServerWaking && !token) return ( 
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", backgroundColor: "#f8fafc", padding: "20px" }}>
-      <style>{`${globalStyles} @keyframes coin-flip { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } } @keyframes float-up-down { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } } @keyframes shadow-pulse { 0%, 100% { transform: scale(1); opacity: 0.25; } 50% { transform: scale(0.5); opacity: 0.1; } } .full-gold-coin { border-radius: 50%; background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); box-shadow: inset 0 0 15px rgba(180, 83, 9, 0.8), 0 10px 20px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; text-shadow: 1px 2px 4px rgba(180, 83, 9, 0.8); animation: float-up-down 2s ease-in-out infinite, coin-flip 1.5s linear infinite; width: 70px; height: 70px; font-size: 34px; border: 4px solid #fef08a; } .full-floor-shadow { background: #000; border-radius: 50%; filter: blur(3px); animation: shadow-pulse 2s ease-in-out infinite; width: 40px; height: 8px; margin-top: 20px; } @media (min-width: 768px) { .full-gold-coin { width: 110px; height: 110px; font-size: 50px; border: 6px solid #fef08a; } .full-floor-shadow { width: 60px; height: 12px; margin-top: 30px; } }`}</style>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", background: "#f8fafc", padding: "20px" }}>
+      <style>{`${globalStyles} @keyframes coin-spin-fast { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } } .center-gold-coin { border-radius: 50%; background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); box-shadow: inset 0 0 10px rgba(180, 83, 9, 0.8), 0 5px 15px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; text-shadow: 1px 2px 2px rgba(180, 83, 9, 0.8); animation: coin-spin-fast 1.5s linear infinite; width: 80px; height: 80px; font-size: 38px; border: 4px solid #fef08a; flex-shrink: 0; }`}</style>
       <div style={{ width: "100%", maxWidth: "420px", backgroundColor: "white", padding: "45px 25px", borderRadius: "24px", boxShadow: "0 20px 40px -10px rgba(0,0,0,0.1)", textAlign: "center", border: "1px solid #e2e8f0" }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "25px" }}><div className="full-gold-coin">₹</div><div className="full-floor-shadow"></div></div>
-        <h1 className="brand-logo" style={{ marginBottom: "10px", fontSize: "28px" }}>SUBHAMS PMMS</h1><h2 style={{ marginTop: "10px", color: "#0f172a", fontSize: "20px", fontWeight: "900" }}>Waking Servers...</h2><p style={{ margin: 0, color: "#64748b", fontSize: "14px", fontWeight: "600" }}>Establishing a secure financial connection.</p>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "25px" }}><div className="center-gold-coin">₹</div></div>
+        <h1 className="brand-logo" style={{ marginBottom: "10px", fontSize: "28px" }}>SUBHAMS PMMS</h1><h2 style={{ marginTop: "10px", color: "#0f172a", fontSize: "20px", fontWeight: "900" }}>Please wait...</h2><p style={{ margin: 0, color: "#64748b", fontSize: "14px", fontWeight: "600" }}>Waking Server.</p>
       </div>
     </div>
   );
@@ -1037,15 +1054,21 @@ function App() {
               <button style={{ padding: "8px 14px", background: "#f59e0b", color: "#0f172a", border: "none", borderRadius: "8px", fontWeight: "900", cursor: "pointer", fontSize: "12px", boxShadow: "0 2px 5px rgba(245, 158, 11, 0.4)" }} onClick={() => setIsAdminView(true)}>⚙️ Admin</button>
           )}
 
+          {/* 🟢 SETTINGS BUTTON WITH AVATAR */}
           <div 
             onClick={() => { setEditName(userProfile.username); setShowProfileModal(true); }}
             style={{ 
-              width: "38px", height: "38px", borderRadius: "50%", background: "linear-gradient(135deg, #f59e0b, #fbbf24)", 
-              display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "900", color: "#0f172a", fontSize: "18px", textTransform: "uppercase",
-              cursor: "pointer", border: "2px solid #ffffff", boxShadow: "0 4px 10px rgba(0,0,0,0.1)", transition: "0.2s"
+              display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", 
+              background: "rgba(255,255,255,0.1)", padding: "5px 15px 5px 5px", 
+              borderRadius: "50px", border: "1px solid rgba(255,255,255,0.2)", transition: "0.2s"
             }}
           >
-              {userProfile.username ? userProfile.username.charAt(0) : <User size={18}/>}
+            <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "linear-gradient(135deg, #f59e0b, #fbbf24)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "900", color: "#0f172a", fontSize: "16px", textTransform: "uppercase", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                {userProfile.username ? userProfile.username.charAt(0) : <User size={16}/>}
+            </div>
+            <span style={{ fontWeight: "bold", fontSize: "14px", color: "white" }}>
+                Settings
+            </span>
           </div>
         </div>
       </nav>
@@ -1130,11 +1153,15 @@ function App() {
       )}
 
       <div className="container" style={{ position: 'relative', minHeight: '65vh' }}>
+        {/* 🟢 CENTERED LOADING ANIMATION */}
         {isServerWaking && (
-          <div style={{ position: "fixed", top: "20px", left: "50%", transform: "translateX(-50%)", background: "rgba(255, 255, 255, 0.95)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", gap: "12px", zIndex: 9999, borderRadius: "50px", padding: "8px 20px 8px 8px", boxShadow: "0 10px 25px rgba(0,0,0,0.15)", border: "1px solid #e2e8f0" }}>
-            <style>{`@keyframes coin-spin-fast { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } } .corner-gold-coin { border-radius: 50%; background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); box-shadow: inset 0 0 8px rgba(180, 83, 9, 0.8), 0 4px 10px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; text-shadow: 1px 2px 2px rgba(180, 83, 9, 0.8); animation: coin-spin-fast 1.5s linear infinite; width: 35px; height: 35px; font-size: 18px; border: 2px solid #fef08a; flex-shrink: 0; }`}</style>
-            <div className="corner-gold-coin">₹</div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}><span style={{ margin: "0", color: "#0f172a", fontSize: "14px", fontWeight: "900", letterSpacing: "0.5px" }}>Syncing...</span><span style={{ margin: "0", color: "#64748b", fontSize: "10px", fontWeight: "700" }}>Waking Server</span></div>
+          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", background: "rgba(255, 255, 255, 0.98)", backdropFilter: "blur(10px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "15px", zIndex: 9999, borderRadius: "24px", padding: "30px 40px", boxShadow: "0 20px 50px rgba(0,0,0,0.2)", border: "1px solid #e2e8f0" }}>
+            <style>{`@keyframes coin-spin-fast { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } } .center-gold-coin { border-radius: 50%; background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); box-shadow: inset 0 0 10px rgba(180, 83, 9, 0.8), 0 5px 15px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; text-shadow: 1px 2px 2px rgba(180, 83, 9, 0.8); animation: coin-spin-fast 1.5s linear infinite; width: 60px; height: 60px; font-size: 28px; border: 3px solid #fef08a; flex-shrink: 0; }`}</style>
+            <div className="center-gold-coin">₹</div>
+            <div style={{ textAlign: 'center' }}>
+                <div style={{ margin: "0", color: "#0f172a", fontSize: "18px", fontWeight: "900", letterSpacing: "0.5px" }}>Please wait...</div>
+                <div style={{ margin: "5px 0 0 0", color: "#64748b", fontSize: "13px", fontWeight: "700" }}>Waking Server</div>
+            </div>
           </div>
         )}
 
@@ -1307,15 +1334,21 @@ function App() {
         </div>
       </div>
       
+      {/* 🟢 FOOTER WITH BOTH LINKS */}
       <footer style={{ padding: "50px 20px", marginTop: "60px", background: "linear-gradient(to bottom, #ffffff, #f8fafc)", borderTop: "1px solid #e2e8f0", boxShadow: "0 -10px 30px rgba(0, 0, 0, 0.02)", display: "flex", flexDirection: "column", alignItems: "center", gap: "15px" }}>
         <div style={{ background: "rgba(59, 130, 246, 0.1)", padding: "8px 16px", borderRadius: "20px", color: "#3b82f6", fontWeight: "800", fontSize: "13px", letterSpacing: "1px", display: "flex", alignItems: "center", gap: "6px", textTransform: "uppercase" }}><Code size={16} /> Personal Money Management System</div>
         <div style={{ textAlign: "center", marginTop: "10px" }}><p style={{ margin: "0", fontSize: "14px", color: "#64748b", fontWeight: "500" }}>Designed & Engineered by</p><h3 style={{ margin: "8px 0", fontSize: "26px", color: "#0f172a", fontWeight: "900", letterSpacing: "-0.5px" }}>Venkata Pavan Kumar Amarthaluri</h3></div>
+        
         <div style={{ display: "flex", gap: "15px", marginTop: "15px", flexWrap: "wrap", justifyContent: "center" }}>
-          <a href="mailto:pavanvenkat63@gmail.com" style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px 24px", background: "white", color: "#475569", borderRadius: "12px", textDecoration: "none", fontWeight: "700", border: "1px solid #cbd5e1", boxShadow: "0 2px 4px rgba(0,0,0,0.02)", transition: "all 0.2s ease" }}><Mail size={18} color="#f59e0b" /> pavanvenkat63@gmail.com</a>
           <a href="https://hub.subhamsnetworks.in/" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px 24px", background: "#3b82f6", color: "white", borderRadius: "12px", textDecoration: "none", fontWeight: "700", boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)", transition: "all 0.2s ease" }}><ExternalLink size={18} /> Subhams Hub</a>
+          <a href="https://agent.subhamsnetworks.in/" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px 24px", background: "#10b981", color: "white", borderRadius: "12px", textDecoration: "none", fontWeight: "700", boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)", transition: "all 0.2s ease" }}><ExternalLink size={18} /> Subhams Xerox</a>
         </div>
-        <p style={{ margin: "25px 0 0 0", fontSize: "13px", color: "#94a3b8", fontWeight: "500" }}>© {new Date().getFullYear()} Subhams PMMS. All Rights Reserved.</p>
+        
+        <a href="mailto:pavanvenkat63@gmail.com" style={{ marginTop: "5px", display: "flex", alignItems: "center", gap: "8px", padding: "10px 20px", background: "white", color: "#475569", borderRadius: "12px", textDecoration: "none", fontWeight: "700", border: "1px solid #cbd5e1", boxShadow: "0 2px 4px rgba(0,0,0,0.02)", transition: "all 0.2s ease" }}><Mail size={16} color="#f59e0b" /> pavanvenkat63@gmail.com</a>
+        
+        <p style={{ margin: "20px 0 0 0", fontSize: "13px", color: "#94a3b8", fontWeight: "500" }}>© {new Date().getFullYear()} Subhams PMMS. All Rights Reserved.</p>
       </footer>
+
       <div style={{ textAlign: 'center', marginTop: '40px', paddingBottom: '25px', position: 'relative' }}>
         <style>{`@keyframes premium-shine { 0% { background-position: -200% center; } 100% { background-position: 200% center; } } @keyframes float-sparkle { 0%, 100% { transform: translateY(0px) scale(0.8); opacity: 0.4; } 50% { transform: translateY(-4px) scale(1.2); opacity: 1; filter: drop-shadow(0 0 6px #fbbf24); } } @keyframes line-breathe { 0%, 100% { width: 30px; opacity: 0.3; } 50% { width: 60px; opacity: 0.8; box-shadow: 0 0 10px #3b82f6; } } .subhams-brand-text { background: linear-gradient(90deg, #3b82f6, #a855f7, #ec4899, #3b82f6); background-size: 200% auto; color: transparent; -webkit-background-clip: text; background-clip: text; animation: premium-shine 3.5s linear infinite; font-weight: 900; font-size: 14px; letter-spacing: 2px; }`}</style>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><span style={{ animation: 'float-sparkle 2s ease-in-out infinite', fontSize: '13px' }}>✨</span><p style={{ fontSize: '10px', color: '#64748b', fontWeight: '800', margin: 0, letterSpacing: '1.5px' }}>POWERED BY <span className="subhams-brand-text">SUBHAMS</span></p><span style={{ animation: 'float-sparkle 2s ease-in-out infinite 1s', fontSize: '13px' }}>✨</span></div>
