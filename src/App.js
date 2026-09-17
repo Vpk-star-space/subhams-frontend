@@ -949,7 +949,6 @@ function App() {
     .spinner { width: 50px; height: 50px; border: 5px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
     .marquee-container { background-color: #1e293b; color: #fbbf24; padding: 10px; overflow: hidden; white-space: nowrap; position: relative; z-index: 1; }
     .marquee-text { display: inline-block; animation: scrollLeft 30s linear infinite; font-weight: 500; letter-spacing: 0.5px; }
-    @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes scrollLeft { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
     .brand-logo { font-size: 2.2rem; font-weight: 900; letter-spacing: -1px; margin: 0; background: linear-gradient(45deg, #f59e0b, #facc15); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     .scrollable-history::-webkit-scrollbar { width: 6px; }
@@ -960,7 +959,7 @@ function App() {
     .insight-blue { background: #eff6ff; border-left: 5px solid #3b82f6; color: #1e40af; padding: 15px; border-radius: 8px;}
     @keyframes fade-in { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
     
-    /* 🟢 3D CENTER COIN CSS */
+    /* 🟢 3D CENTER COIN CSS (DASHBOARD) - SPEED REDUCED TO 5S */
     @keyframes flip-coin-3d {
       0% { transform: rotateY(0deg); }
       100% { transform: rotateY(360deg); }
@@ -981,7 +980,7 @@ function App() {
       height: 100%;
       position: relative;
       transform-style: preserve-3d;
-      animation: flip-coin-3d 3s linear infinite;
+      animation: flip-coin-3d 5s linear infinite;
       box-shadow: 0 4px 8px rgba(0,0,0,0.2);
       border-radius: 50%;
     }
@@ -1011,18 +1010,75 @@ function App() {
       line-height: 1.1;
       padding: 2px;
     }
+
+    /* 🟢 3D GIANT LOADING COIN CSS (OVERLAY) - SPEED REDUCED TO 4S */
+    @keyframes flip-coin-3d-giant {
+      0% { transform: rotateY(0deg); }
+      100% { transform: rotateY(360deg); }
+    }
+    .loader-coin-wrapper {
+      width: 120px;
+      height: 120px;
+      perspective: 1000px;
+      margin: 0 auto;
+    }
+    .loader-coin-inner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: flip-coin-3d-giant 4s linear infinite;
+      border-radius: 50%;
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);
+    }
+    .loader-coin-front, .loader-coin-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%);
+      border: 6px solid #fef08a;
+      color: #fffbeb;
+      text-shadow: 1px 2px 4px rgba(180, 83, 9, 0.8);
+      text-align: center;
+    }
+    .loader-coin-front {
+      font-size: 65px;
+      font-weight: 900;
+    }
+    .loader-coin-back {
+      transform: rotateY(180deg);
+      font-size: 16px;
+      font-weight: 900;
+      line-height: 1.2;
+    }
   `;
 
   if (isMaintenanceMode) return <MaintenanceScreen />;
   if (isAdminView) return <AdminCommandCenter token={token} onBack={() => setIsAdminView(false)} />;
 
+  // 🟢 FULL PAGE LOADER FOR INITIAL LOGIN
   if (isAppLoading && !token) return ( 
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", background: "#f8fafc", padding: "20px" }}>
-      <style>{`${globalStyles} @keyframes coin-spin-fast { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } } .center-gold-coin { border-radius: 50%; background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); box-shadow: 0 5px 15px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; text-shadow: 1px 2px 2px rgba(180, 83, 9, 0.8); animation: coin-spin-fast 1.5s linear infinite; width: 80px; height: 80px; font-size: 38px; border: 4px solid #fef08a; flex-shrink: 0; }`}</style>
+      <style>{globalStyles}</style>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-        <div className="center-gold-coin" style={{ marginBottom: "20px" }}>₹</div>
-        <h2 style={{ margin: "0", color: "#0f172a", fontSize: "22px", fontWeight: "900" }}>Please wait...</h2>
-        <p style={{ margin: "5px 0 0 0", color: "#64748b", fontSize: "14px", fontWeight: "600" }}>Loading Server.</p>
+        
+        <div className="loader-coin-wrapper" style={{ marginBottom: "25px" }}>
+          <div className="loader-coin-inner">
+            <div className="loader-coin-front">₹</div>
+            <div className="loader-coin-back">SUBHAMS<br/>PMMS</div>
+          </div>
+        </div>
+
+        <div style={{ background: "white", padding: "12px 24px", borderRadius: "20px", border: "1px solid #e2e8f0", boxShadow: "0 10px 25px rgba(0,0,0,0.05)" }}>
+            <div style={{ margin: "0", color: "#0f172a", fontSize: "16px", fontWeight: "900" }}>Please wait...</div>
+            <div style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "13px", fontWeight: "700" }}>Waking Server</div>
+        </div>
       </div>
     </div>
   );
@@ -1207,13 +1263,20 @@ function App() {
 
       <div className="container" style={{ position: 'relative', zIndex: 1 }}>
         
+        {/* 🟢 FULL-SCREEN BLOCKING LOADER FOR OVERLAYS */}
         {isAppLoading && (
-          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px", zIndex: 9999 }}>
-            <style>{`@keyframes coin-spin-fast { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } } .center-gold-coin { border-radius: 50%; background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); box-shadow: 0 5px 15px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; text-shadow: 1px 2px 2px rgba(180, 83, 9, 0.8); animation: coin-spin-fast 1.5s linear infinite; width: 60px; height: 60px; font-size: 28px; border: 3px solid #fef08a; flex-shrink: 0; }`}</style>
-            <div className="center-gold-coin">₹</div>
-            <div style={{ background: "rgba(255,255,255,0.8)", padding: "4px 12px", borderRadius: "20px", backdropFilter: "blur(4px)" }}>
-                <div style={{ margin: "0", color: "#0f172a", fontSize: "14px", fontWeight: "900", textAlign: "center" }}>Please wait...</div>
-                <div style={{ margin: "0", color: "#64748b", fontSize: "11px", fontWeight: "700", textAlign: "center" }}>Loading Server</div>
+          <div style={{ position: "fixed", top: "0", left: "0", width: "100vw", height: "100vh", background: "rgba(241, 245, 249, 0.9)", backdropFilter: "blur(10px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "25px", zIndex: 9999 }}>
+            
+            <div className="loader-coin-wrapper">
+              <div className="loader-coin-inner">
+                <div className="loader-coin-front">₹</div>
+                <div className="loader-coin-back">SUBHAMS<br/>PMMS</div>
+              </div>
+            </div>
+
+            <div style={{ background: "white", padding: "12px 24px", borderRadius: "20px", border: "1px solid #e2e8f0", boxShadow: "0 10px 25px rgba(0,0,0,0.05)", textAlign: "center" }}>
+                <div style={{ margin: "0", color: "#0f172a", fontSize: "16px", fontWeight: "900" }}>Please wait...</div>
+                <div style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "13px", fontWeight: "700" }}>Connecting to Server</div>
             </div>
           </div>
         )}
@@ -1246,7 +1309,7 @@ function App() {
           <div className="metric-card"><div className="metric-title">PENDING <br/>పెండింగ్</div><div className="metric-value" style={{ color: "#f59e0b" }}>₹{pending}</div></div>
           <div className="metric-card" style={{ backgroundColor: balance >= 0 ? "#f0fdf4" : "#fef2f2" }}><div className="metric-title">BALANCE <br/>నిల్వ</div><div className="metric-value" style={{ color: balance >= 0 ? "#3b82f6" : "#ef4444" }}>₹{balance}</div></div>
           
-          {/* 🟢 3D CENTER SPINNING COIN */}
+          {/* 🟢 3D CENTER SPINNING COIN IN DASHBOARD */}
           <div className="coin-wrapper">
             <div className="coin-inner">
               <div className="coin-front">₹</div>
@@ -1433,7 +1496,7 @@ function App() {
         <p style={{ margin: "20px 0 0 0", fontSize: "13px", color: "#94a3b8", fontWeight: "500" }}>© {new Date().getFullYear()} Subhams PMMS. All Rights Reserved.</p>
         
         {/* 🟢 SECURE LOGOUT BUTTON DIRECTLY BELOW COPYRIGHT TEXT */}
-        <div style={{ marginTop: "20px" }}>
+        <div style={{ marginTop: "20px", width: "100%", textAlign: "center" }}>
             <button onClick={logout} style={{ background: "transparent", color: "#ef4444", border: "2px solid #ef4444", padding: "8px 20px", borderRadius: "8px", fontSize: "14px", fontWeight: "bold", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", transition: "all 0.2s ease" }}>
                 <Power size={14} /> Logout
             </button>
