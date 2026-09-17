@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Ba
 import { GoogleLogin } from '@react-oauth/google';
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas"; 
-import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code, User, Bell, BellOff, BellRing, Check, X, Share2 } from 'lucide-react'; 
+import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code, User, Bell, BellOff, BellRing, Check, X, Share2, Power, Info } from 'lucide-react'; 
 import InstallPopup from './components/InstallPopup';
 import AdminCommandCenter from './components/AdminCommandCenter';
 
@@ -116,7 +116,7 @@ const AppLockScreen = ({ onUnlock }) => (
 );
 
 function App() {
-  const [isServerWaking, setIsServerWaking] = useState(!!localStorage.getItem("token")); 
+  const [isAppLoading, setIsAppLoading] = useState(!!localStorage.getItem("token")); 
   const [authMode, setAuthMode] = useState("login"); 
   
   const [isAppLocked, setIsAppLocked] = useState(!!localStorage.getItem("token") && localStorage.getItem("subhams_app_lock") === "true");
@@ -165,6 +165,9 @@ function App() {
     shareLang: "en"
   });
   const [interestResult, setInterestResult] = useState(null);
+
+  const [txSuccessMsg, setTxSuccessMsg] = useState(""); // 🟢 TRANSACTION SUCCESS MSG
+  const [showTxInfo, setShowTxInfo] = useState(false); // 🟢 ADD MONEY INFO TOGGLE
 
   const formRef = useRef(null); 
   const [isAdminView, setIsAdminView] = useState(false);
@@ -288,7 +291,7 @@ function App() {
     if (lockoutTimer > 0) return alert("Account locked. Please wait for the timer.");
     if (!username || !password) return alert("Please enter both Username and Password.");
     
-    setIsServerWaking(true); 
+    setIsAppLoading(true); 
     try {
       const res = await fetch(`${API}/auth/login`, { 
         method: "POST", 
@@ -343,12 +346,12 @@ function App() {
     } catch (err) { 
       alert(DEVICE_ERROR_MSG); 
     } finally { 
-      setIsServerWaking(false); 
+      setIsAppLoading(false); 
     }
   };
 
   const handleGoogleSuccess = async (credentialResponse) => {
-    setIsServerWaking(true);
+    setIsAppLoading(true);
     try {
       const res = await fetch(`${API}/auth/google-login`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ idToken: credentialResponse.credential })
@@ -372,42 +375,42 @@ function App() {
         if (localStorage.getItem("subhams_app_lock") === "true") setIsAppLocked(true);
       } else { alert(DEVICE_ERROR_MSG); }
     } catch (err) { alert(DEVICE_ERROR_MSG); }
-    finally { setIsServerWaking(false); }
+    finally { setIsAppLoading(false); }
   };
 
   const requestRegister = async () => {
     if (!email || !username || !password) return alert("Enter email, username, and password");
-    setIsServerWaking(true);
+    setIsAppLoading(true);
     try {
       const res = await fetch(`${API}/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, username, password }) });
       const data = await res.json();
       if (res.ok) { alert("OTP sent to your email!"); setAuthMode("otp"); } else { alert(data.error || "Registration failed"); }
-    } catch (err) { alert(DEVICE_ERROR_MSG); } finally { setIsServerWaking(false); }
+    } catch (err) { alert(DEVICE_ERROR_MSG); } finally { setIsAppLoading(false); }
   };
 
   const verifyOtpAndRegister = async () => {
     if (!otp) return alert("Enter the OTP sent to your email");
-    setIsServerWaking(true);
+    setIsAppLoading(true);
     try {
       const res = await fetch(`${API}/auth/verify-otp`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, username, password, otp }) });
       const data = await res.json();
       if (res.ok) { alert("Success! You can now log in."); setAuthMode("login"); setPassword(""); setOtp(""); } else { alert(data.error || "Invalid OTP"); }
-    } catch (err) { alert(DEVICE_ERROR_MSG); } finally { setIsServerWaking(false); }
+    } catch (err) { alert(DEVICE_ERROR_MSG); } finally { setIsAppLoading(false); }
   };
 
   const handleForgotPassword = async () => {
     if (!email) return alert("Please enter your registered email address.");
-    setIsServerWaking(true);
+    setIsAppLoading(true);
     try {
       const res = await fetch(`${API}/auth/forgot-password`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
       const data = await res.json();
       if (res.ok) { alert("OTP sent! Check your email."); setAuthMode("reset_otp"); } else { alert(data.error || "Failed to send OTP."); }
-    } catch (err) { alert(DEVICE_ERROR_MSG); } finally { setIsServerWaking(false); }
+    } catch (err) { alert(DEVICE_ERROR_MSG); } finally { setIsAppLoading(false); }
   };
 
   const handleResetPassword = async () => {
     if (!otp || !newPassword) return alert("Please enter the OTP and your new password.");
-    setIsServerWaking(true);
+    setIsAppLoading(true);
     try {
       const res = await fetch(`${API}/auth/reset-password`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, otp, newPassword }) });
       const data = await res.json();
@@ -416,10 +419,13 @@ function App() {
         setAuthMode("login"); setOtp(""); setNewPassword(""); setPassword(""); 
         setLockoutTimer(0); localStorage.removeItem('lockoutUntil'); setFailedAttempts(0); localStorage.removeItem('localFailedAttempts');
       } else { alert(data.error || data.message || "Invalid OTP."); }
-    } catch (err) { alert(DEVICE_ERROR_MSG); } finally { setIsServerWaking(false); }
+    } catch (err) { alert(DEVICE_ERROR_MSG); } finally { setIsAppLoading(false); }
   };
 
   const logout = () => { 
+    // 🟢 CONFIRMATION ADDED BEFORE LOGOUT
+    if (!window.confirm("Are you sure you want to securely log out?")) return;
+    
     localStorage.removeItem("token"); localStorage.removeItem("refreshToken"); localStorage.removeItem("pmms_user");
     setToken(null); setRefreshToken(null); setUserProfile({username:"", email:"", preferred_language: "en", silent_mode: false, email_digest_enabled: true});
     setTransactions([]); setAllTransactions([]); setMonthlyChartData([]); setInsights(null); 
@@ -559,8 +565,8 @@ function App() {
   };
 
   const fetchAllData = useCallback(async () => {
-    if (!token || token === "null" || isMaintenanceMode || isAppLocked) { setIsServerWaking(false); return; }
-    setIsServerWaking(true);
+    if (!token || token === "null" || isMaintenanceMode || isAppLocked) { setIsAppLoading(false); return; }
+    
     try {
       const headers = { Authorization: `Bearer ${token}` };
       
@@ -612,7 +618,9 @@ function App() {
       }
       setInsights(iData);
     } catch (err) { console.log("Background fetch silent fail"); } 
-    finally { setIsServerWaking(false); }
+    finally { 
+        setIsAppLoading(false); // Only turns off loader, never randomly turns it on
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, refreshAuthToken, isAppLocked, userProfile.preferred_language]);
 
@@ -789,6 +797,10 @@ function App() {
         body: JSON.stringify({ title, amount: Number(amount), type, category, date }) 
       });
       if (res.ok) { 
+        // 🟢 TRANSACTION SUCCESS MESSAGE UPDATE
+        setTxSuccessMsg(`✅ Saved successfully: ₹${amount} as ${type}`);
+        setTimeout(() => setTxSuccessMsg(""), 4000); // Clear after 4 seconds
+
         setTitle(""); setAmount(""); setEditingId(null); setCategory("Other"); setDate(new Date().toISOString().split('T')[0]); fetchAllData(); 
       } else { const errData = await res.json(); alert("Error: " + errData.message); }
     } catch (err) { alert(DEVICE_ERROR_MSG); }
@@ -955,17 +967,19 @@ function App() {
     .insight-green { background: #f0fdf4; border-left: 5px solid #10b981; color: #065f46; padding: 15px; border-radius: 8px;}
     .insight-red { background: #fef2f2; border-left: 5px solid #ef4444; color: #991b1b; padding: 15px; border-radius: 8px;}
     .insight-blue { background: #eff6ff; border-left: 5px solid #3b82f6; color: #1e40af; padding: 15px; border-radius: 8px;}
+    @keyframes fade-in { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
   `;
 
   if (isMaintenanceMode) return <MaintenanceScreen />;
   if (isAdminView) return <AdminCommandCenter token={token} onBack={() => setIsAdminView(false)} />;
 
-  if (isServerWaking && !token) return ( 
+  if (isAppLoading && !token) return ( 
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", background: "#f8fafc", padding: "20px" }}>
-      <style>{`${globalStyles} @keyframes coin-spin-fast { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } } .center-gold-coin { border-radius: 50%; background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); box-shadow: inset 0 0 10px rgba(180, 83, 9, 0.8), 0 5px 15px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; text-shadow: 1px 2px 2px rgba(180, 83, 9, 0.8); animation: coin-spin-fast 1.5s linear infinite; width: 80px; height: 80px; font-size: 38px; border: 4px solid #fef08a; flex-shrink: 0; }`}</style>
-      <div style={{ width: "100%", maxWidth: "420px", backgroundColor: "white", padding: "45px 25px", borderRadius: "24px", boxShadow: "0 20px 40px -10px rgba(0,0,0,0.1)", textAlign: "center", border: "1px solid #e2e8f0" }}>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: "25px" }}><div className="center-gold-coin">₹</div></div>
-        <h1 className="brand-logo" style={{ marginBottom: "10px", fontSize: "28px" }}>SUBHAMS PMMS</h1><h2 style={{ marginTop: "10px", color: "#0f172a", fontSize: "20px", fontWeight: "900" }}>Please wait...</h2><p style={{ margin: 0, color: "#64748b", fontSize: "14px", fontWeight: "600" }}>Waking Server.</p>
+      <style>{`${globalStyles} @keyframes coin-spin-fast { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } } .center-gold-coin { border-radius: 50%; background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); box-shadow: 0 5px 15px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; text-shadow: 1px 2px 2px rgba(180, 83, 9, 0.8); animation: coin-spin-fast 1.5s linear infinite; width: 80px; height: 80px; font-size: 38px; border: 4px solid #fef08a; flex-shrink: 0; }`}</style>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+        <div className="center-gold-coin" style={{ marginBottom: "20px" }}>₹</div>
+        <h2 style={{ margin: "0", color: "#0f172a", fontSize: "22px", fontWeight: "900" }}>Please wait...</h2>
+        <p style={{ margin: "5px 0 0 0", color: "#64748b", fontSize: "14px", fontWeight: "600" }}>Loading Server.</p>
       </div>
     </div>
   );
@@ -1143,24 +1157,21 @@ function App() {
                     {localStorage.getItem("subhams_app_lock") !== "true" && (
                         <button style={{ padding: "12px", background: "#f8fafc", color: "#0f172a", border: "1px solid #e2e8f0", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginTop: "5px" }} onClick={() => { setShowProfileModal(false); enableAppLock(); }}><Lock size={16} /> Enable Biometric App Lock</button>
                     )}
-
-                    <button onClick={logout} style={{ width: "100%", padding: "14px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginTop: "15px" }}>
-                        Exit Dashboard
-                    </button>
                 </div>
             </div>
         </div>
       )}
 
       <div className="container" style={{ position: 'relative', minHeight: '65vh' }}>
-        {/* 🟢 CENTERED LOADING ANIMATION */}
-        {isServerWaking && (
-          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", background: "rgba(255, 255, 255, 0.98)", backdropFilter: "blur(10px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "15px", zIndex: 9999, borderRadius: "24px", padding: "30px 40px", boxShadow: "0 20px 50px rgba(0,0,0,0.2)", border: "1px solid #e2e8f0" }}>
-            <style>{`@keyframes coin-spin-fast { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } } .center-gold-coin { border-radius: 50%; background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); box-shadow: inset 0 0 10px rgba(180, 83, 9, 0.8), 0 5px 15px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; text-shadow: 1px 2px 2px rgba(180, 83, 9, 0.8); animation: coin-spin-fast 1.5s linear infinite; width: 60px; height: 60px; font-size: 28px; border: 3px solid #fef08a; flex-shrink: 0; }`}</style>
+        
+        {/* 🟢 CENTERED LOADING ANIMATION (NO WHITE CARD) */}
+        {isAppLoading && (
+          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px", zIndex: 9999 }}>
+            <style>{`@keyframes coin-spin-fast { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } } .center-gold-coin { border-radius: 50%; background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); box-shadow: 0 5px 15px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; text-shadow: 1px 2px 2px rgba(180, 83, 9, 0.8); animation: coin-spin-fast 1.5s linear infinite; width: 60px; height: 60px; font-size: 28px; border: 3px solid #fef08a; flex-shrink: 0; }`}</style>
             <div className="center-gold-coin">₹</div>
-            <div style={{ textAlign: 'center' }}>
-                <div style={{ margin: "0", color: "#0f172a", fontSize: "18px", fontWeight: "900", letterSpacing: "0.5px" }}>Please wait...</div>
-                <div style={{ margin: "5px 0 0 0", color: "#64748b", fontSize: "13px", fontWeight: "700" }}>Waking Server</div>
+            <div style={{ background: "rgba(255,255,255,0.8)", padding: "4px 12px", borderRadius: "20px", backdropFilter: "blur(4px)" }}>
+                <div style={{ margin: "0", color: "#0f172a", fontSize: "14px", fontWeight: "900", textAlign: "center" }}>Please wait...</div>
+                <div style={{ margin: "0", color: "#64748b", fontSize: "11px", fontWeight: "700", textAlign: "center" }}>Loading</div>
             </div>
           </div>
         )}
@@ -1202,7 +1213,25 @@ function App() {
 
         <div className="action-grid">
           <div ref={formRef} style={{ backgroundColor: "white", borderRadius: "16px", padding: "25px", border: "1px solid #e2e8f0", alignSelf: "start" }}>
-            <h3 style={{ marginTop: 0 }}>{editingId ? "✏️ Edit Transaction" : "➕ Add Money"}</h3>
+            
+            {/* 🟢 INFO TOGGLE FOR ADD MONEY */}
+            <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: "10px" }}>
+                {editingId ? "✏️ Edit Transaction" : "➕ Add Money"}
+                <span onClick={() => setShowTxInfo(!showTxInfo)} style={{ cursor: "pointer", background: "#e2e8f0", color: "#3b82f6", borderRadius: "50%", width: "24px", height: "24px", display: "inline-flex", alignItems: "center", justifyContent: "center", transition: "0.2s" }}>
+                    <Info size={16} />
+                </span>
+            </h3>
+            
+            {showTxInfo && (
+                <div style={{ background: "#eff6ff", border: "1px dashed #3b82f6", padding: "12px", borderRadius: "8px", fontSize: "13px", color: "#1e40af", marginBottom: "15px", lineHeight: "1.6" }}>
+                    <b>How to save:</b><br/>
+                    1. Enter title (e.g., person's name or purpose).<br/>
+                    2. Enter amount.<br/>
+                    3. Select a category and date.<br/>
+                    4. Click the green (+ Income), red (- Expense), or yellow (⏳ Pending) button below to securely save your record.
+                </div>
+            )}
+
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="Title (e.g., Rent)" value={title} onChange={e => setTitle(e.target.value)} />
               <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} type="number" placeholder="Amount (₹)" value={amount} onChange={e => setAmount(e.target.value)} />
@@ -1218,6 +1247,14 @@ function App() {
               <button style={{ flex: 1, padding: "12px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }} onClick={() => handleSubmit("expense")}>- Expense</button>
               <button style={{ flex: 1, padding: "12px", background: "#f59e0b", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }} onClick={() => handleSubmit("pending")}>⏳ Pending</button>
             </div>
+            
+            {/* 🟢 TRANSACTION SUCCESS MESSAGE (Displays right below the buttons) */}
+            {txSuccessMsg && (
+                <div style={{ marginTop: "15px", padding: "12px", background: "#f0fdf4", color: "#065f46", border: "1px dashed #10b981", borderRadius: "8px", fontSize: "14px", fontWeight: "bold", textAlign: "center", animation: "fade-in 0.5s" }}>
+                    {txSuccessMsg}
+                </div>
+            )}
+
             {editingId && <button style={{ width: "100%", padding: "14px", background: "#e2e8f0", color: "#334155", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", marginTop: "10px" }} onClick={cancelEdit}>Cancel Edit</button>}
           </div>
 
@@ -1332,6 +1369,13 @@ function App() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* 🟢 SECURE LOGOUT BUTTON AT THE VERY BOTTOM */}
+      <div style={{ textAlign: "center", marginTop: "40px", marginBottom: "-20px", position: "relative", zIndex: 10 }}>
+          <button onClick={logout} style={{ background: "white", color: "#ef4444", border: "2px solid #ef4444", padding: "12px 30px", borderRadius: "12px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "8px", boxShadow: "0 4px 10px rgba(239, 68, 68, 0.15)", transition: "all 0.2s ease" }}>
+              <Power size={18} /> Secure Logout
+          </button>
       </div>
       
       {/* 🟢 FOOTER WITH BOTH LINKS */}
