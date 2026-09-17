@@ -166,8 +166,8 @@ function App() {
   });
   const [interestResult, setInterestResult] = useState(null);
 
-  const [txSuccessMsg, setTxSuccessMsg] = useState(""); // 🟢 TRANSACTION SUCCESS MSG
-  const [showTxInfo, setShowTxInfo] = useState(false); // 🟢 ADD MONEY INFO TOGGLE
+  const [txSuccessMsg, setTxSuccessMsg] = useState(""); 
+  const [showTxInfo, setShowTxInfo] = useState(false); 
 
   const formRef = useRef(null); 
   const [isAdminView, setIsAdminView] = useState(false);
@@ -423,7 +423,6 @@ function App() {
   };
 
   const logout = () => { 
-    // 🟢 CONFIRMATION ADDED BEFORE LOGOUT
     if (!window.confirm("Are you sure you want to securely log out?")) return;
     
     localStorage.removeItem("token"); localStorage.removeItem("refreshToken"); localStorage.removeItem("pmms_user");
@@ -605,7 +604,6 @@ function App() {
       
       if (Array.isArray(tData)) { setTransactions(tData); setAllTransactions(tData); }
       if (Array.isArray(mData)) {
-        // Format month names for the chart based on user preference
         const formattedChartData = mData.map(item => {
           let monthLabel = item.name;
           const parts = monthLabel.split(' ');
@@ -619,7 +617,7 @@ function App() {
       setInsights(iData);
     } catch (err) { console.log("Background fetch silent fail"); } 
     finally { 
-        setIsAppLoading(false); // Only turns off loader, never randomly turns it on
+        setIsAppLoading(false); 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, refreshAuthToken, isAppLocked, userProfile.preferred_language]);
@@ -630,7 +628,6 @@ function App() {
     if (transactions.length === 0) return alert("No transactions to download!");
     setIsDownloading(true); 
 
-    // 🟢 TELEMETRY: Record report download
     if (token) {
       fetch(`${API}/notifications/track-feature`, {
         method: "POST",
@@ -797,9 +794,8 @@ function App() {
         body: JSON.stringify({ title, amount: Number(amount), type, category, date }) 
       });
       if (res.ok) { 
-        // 🟢 TRANSACTION SUCCESS MESSAGE UPDATE
         setTxSuccessMsg(`✅ Saved successfully: ₹${amount} as ${type}`);
-        setTimeout(() => setTxSuccessMsg(""), 4000); // Clear after 4 seconds
+        setTimeout(() => setTxSuccessMsg(""), 4000); 
 
         setTitle(""); setAmount(""); setEditingId(null); setCategory("Other"); setDate(new Date().toISOString().split('T')[0]); fetchAllData(); 
       } else { const errData = await res.json(); alert("Error: " + errData.message); }
@@ -836,7 +832,6 @@ function App() {
     const { principal, startDate, endDate, interestType, rate, shareLang } = interestData;
     if (!startDate || !endDate || !principal || !rate) return alert("Please fill all fields");
 
-    // 🟢 TELEMETRY: Record interest calculation
     if (token) {
       fetch(`${API}/notifications/track-feature`, {
         method: "POST",
@@ -858,15 +853,12 @@ function App() {
 
     let calculatedInterest = 0;
     if (interestType === 'Local') {
-      // Local village style: eg. ₹2 per ₹100 per month
       calculatedInterest = (p / 100) * r * totalMonths;
     } else {
-      // Bank style: Annual Percentage Rate (APR)
       calculatedInterest = (p * r * totalDays) / (100 * 365);
     }
 
     const finalAmount = p + calculatedInterest;
-    // Calculate daily and weekly breakdown
     const daily = totalDays > 0 ? (calculatedInterest / totalDays) : 0;
     const weekly = daily * 7;
 
@@ -915,7 +907,6 @@ function App() {
     const topDrain = insights?.topCategory || "Other";
     const topAmount = insights?.amount || 0;
     
-    // 🟢 ADVANCED FINANCIAL ADVICE ENGINE
     if (expense > income) {
       const deficit = expense - income;
       smartMsg = `⚠️ Budget Alert: Expenses exceed income by ₹${deficit}. Your highest drain is ${topDrain} (₹${topAmount}). Cut back here to restore a positive balance.`; 
@@ -947,7 +938,7 @@ function App() {
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background-color: #f1f5f9; margin: 0; color: #334155; }
     .nav-bar { background: #0f172a; color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
-    .container { max-width: 1200px; margin: 0 auto; padding: 15px; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 15px; position: relative; z-index: 1; }
     .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 20px; }
     .action-grid { display: grid; grid-template-columns: 35% 65%; gap: 20px; }
     @media (max-width: 900px) { .action-grid { grid-template-columns: 1fr; } }
@@ -956,7 +947,7 @@ function App() {
     .metric-value { font-size: 2rem; font-weight: 800; margin: 10px 0 0 0; }
     .history-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #e2e8f0; margin-bottom: 8px; border-radius: 8px; transition: 0.2s; }
     .spinner { width: 50px; height: 50px; border: 5px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
-    .marquee-container { background-color: #1e293b; color: #fbbf24; padding: 10px; overflow: hidden; white-space: nowrap; }
+    .marquee-container { background-color: #1e293b; color: #fbbf24; padding: 10px; overflow: hidden; white-space: nowrap; position: relative; z-index: 1; }
     .marquee-text { display: inline-block; animation: scrollLeft 30s linear infinite; font-weight: 500; letter-spacing: 0.5px; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes scrollLeft { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
@@ -1057,6 +1048,34 @@ function App() {
   return (
     <div>
       <style>{globalStyles}</style>
+
+      {/* 🟢 AMBIENT PREMIUM BACKGROUND ANIMATION */}
+      <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+        <style>{`
+          @keyframes ambient-float {
+            0% { transform: translateY(110vh) rotate(0deg) scale(0.8); opacity: 0; }
+            10% { opacity: 0.1; }
+            90% { opacity: 0.1; }
+            100% { transform: translateY(-10vh) rotate(360deg) scale(1.2); opacity: 0; }
+          }
+          .ambient-money {
+            position: absolute;
+            color: #facc15;
+            font-weight: 900;
+            user-select: none;
+            animation: ambient-float linear infinite;
+            filter: drop-shadow(0 4px 6px rgba(245, 158, 11, 0.2));
+            z-index: 0;
+          }
+        `}</style>
+        <div className="ambient-money" style={{ left: '5%', fontSize: '24px', animationDuration: '18s', animationDelay: '1s' }}>₹</div>
+        <div className="ambient-money" style={{ left: '25%', fontSize: '42px', animationDuration: '25s', animationDelay: '5s' }}>₹</div>
+        <div className="ambient-money" style={{ left: '55%', fontSize: '28px', animationDuration: '20s', animationDelay: '2s' }}>₹</div>
+        <div className="ambient-money" style={{ left: '80%', fontSize: '36px', animationDuration: '22s', animationDelay: '8s' }}>₹</div>
+        <div className="ambient-money" style={{ left: '90%', fontSize: '20px', animationDuration: '15s', animationDelay: '12s' }}>₹</div>
+        <div className="ambient-money" style={{ left: '15%', fontSize: '50px', animationDuration: '30s', animationDelay: '15s', color: 'rgba(16, 185, 129, 0.3)' }}>₹</div>
+      </div>
+
       <div className="marquee-container">
         <div className="marquee-text">🚀 Important Note: Welcome to your Subhams Personal Money Management System! Track your income, manage your expenses, and secure your financial future! Thank You visiting My website! Venkata Pavan Kumar.</div>
       </div>
@@ -1068,7 +1087,6 @@ function App() {
               <button style={{ padding: "8px 14px", background: "#f59e0b", color: "#0f172a", border: "none", borderRadius: "8px", fontWeight: "900", cursor: "pointer", fontSize: "12px", boxShadow: "0 2px 5px rgba(245, 158, 11, 0.4)" }} onClick={() => setIsAdminView(true)}>⚙️ Admin</button>
           )}
 
-          {/* 🟢 SETTINGS BUTTON WITH AVATAR */}
           <div 
             onClick={() => { setEditName(userProfile.username); setShowProfileModal(true); }}
             style={{ 
@@ -1162,9 +1180,8 @@ function App() {
         </div>
       )}
 
-      <div className="container" style={{ position: 'relative', minHeight: '65vh' }}>
+      <div className="container">
         
-        {/* 🟢 CENTERED LOADING ANIMATION (NO WHITE CARD) */}
         {isAppLoading && (
           <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px", zIndex: 9999 }}>
             <style>{`@keyframes coin-spin-fast { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } } .center-gold-coin { border-radius: 50%; background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); box-shadow: 0 5px 15px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; text-shadow: 1px 2px 2px rgba(180, 83, 9, 0.8); animation: coin-spin-fast 1.5s linear infinite; width: 60px; height: 60px; font-size: 28px; border: 3px solid #fef08a; flex-shrink: 0; }`}</style>
@@ -1214,7 +1231,6 @@ function App() {
         <div className="action-grid">
           <div ref={formRef} style={{ backgroundColor: "white", borderRadius: "16px", padding: "25px", border: "1px solid #e2e8f0", alignSelf: "start" }}>
             
-            {/* 🟢 INFO TOGGLE FOR ADD MONEY */}
             <h3 style={{ marginTop: 0, display: "flex", alignItems: "center", gap: "10px" }}>
                 {editingId ? "✏️ Edit Transaction" : "➕ Add Money"}
                 <span onClick={() => setShowTxInfo(!showTxInfo)} style={{ cursor: "pointer", background: "#e2e8f0", color: "#3b82f6", borderRadius: "50%", width: "24px", height: "24px", display: "inline-flex", alignItems: "center", justifyContent: "center", transition: "0.2s" }}>
@@ -1248,7 +1264,6 @@ function App() {
               <button style={{ flex: 1, padding: "12px", background: "#f59e0b", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }} onClick={() => handleSubmit("pending")}>⏳ Pending</button>
             </div>
             
-            {/* 🟢 TRANSACTION SUCCESS MESSAGE (Displays right below the buttons) */}
             {txSuccessMsg && (
                 <div style={{ marginTop: "15px", padding: "12px", background: "#f0fdf4", color: "#065f46", border: "1px dashed #10b981", borderRadius: "8px", fontSize: "14px", fontWeight: "bold", textAlign: "center", animation: "fade-in 0.5s" }}>
                     {txSuccessMsg}
@@ -1370,16 +1385,8 @@ function App() {
           )}
         </div>
       </div>
-
-      {/* 🟢 SECURE LOGOUT BUTTON AT THE VERY BOTTOM */}
-      <div style={{ textAlign: "center", marginTop: "40px", marginBottom: "-20px", position: "relative", zIndex: 10 }}>
-          <button onClick={logout} style={{ background: "white", color: "#ef4444", border: "2px solid #ef4444", padding: "12px 30px", borderRadius: "12px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "8px", boxShadow: "0 4px 10px rgba(239, 68, 68, 0.15)", transition: "all 0.2s ease" }}>
-              <Power size={18} /> Secure Logout
-          </button>
-      </div>
       
-      {/* 🟢 FOOTER WITH BOTH LINKS */}
-      <footer style={{ padding: "50px 20px", marginTop: "60px", background: "linear-gradient(to bottom, #ffffff, #f8fafc)", borderTop: "1px solid #e2e8f0", boxShadow: "0 -10px 30px rgba(0, 0, 0, 0.02)", display: "flex", flexDirection: "column", alignItems: "center", gap: "15px" }}>
+      <footer style={{ padding: "50px 20px", marginTop: "60px", background: "linear-gradient(to bottom, #ffffff, #f8fafc)", borderTop: "1px solid #e2e8f0", boxShadow: "0 -10px 30px rgba(0, 0, 0, 0.02)", display: "flex", flexDirection: "column", alignItems: "center", gap: "15px", position: "relative", zIndex: 1 }}>
         <div style={{ background: "rgba(59, 130, 246, 0.1)", padding: "8px 16px", borderRadius: "20px", color: "#3b82f6", fontWeight: "800", fontSize: "13px", letterSpacing: "1px", display: "flex", alignItems: "center", gap: "6px", textTransform: "uppercase" }}><Code size={16} /> Personal Money Management System</div>
         <div style={{ textAlign: "center", marginTop: "10px" }}><p style={{ margin: "0", fontSize: "14px", color: "#64748b", fontWeight: "500" }}>Designed & Engineered by</p><h3 style={{ margin: "8px 0", fontSize: "26px", color: "#0f172a", fontWeight: "900", letterSpacing: "-0.5px" }}>Venkata Pavan Kumar Amarthaluri</h3></div>
         
@@ -1391,9 +1398,16 @@ function App() {
         <a href="mailto:pavanvenkat63@gmail.com" style={{ marginTop: "5px", display: "flex", alignItems: "center", gap: "8px", padding: "10px 20px", background: "white", color: "#475569", borderRadius: "12px", textDecoration: "none", fontWeight: "700", border: "1px solid #cbd5e1", boxShadow: "0 2px 4px rgba(0,0,0,0.02)", transition: "all 0.2s ease" }}><Mail size={16} color="#f59e0b" /> pavanvenkat63@gmail.com</a>
         
         <p style={{ margin: "20px 0 0 0", fontSize: "13px", color: "#94a3b8", fontWeight: "500" }}>© {new Date().getFullYear()} Subhams PMMS. All Rights Reserved.</p>
+        
+        {/* 🟢 SECURE LOGOUT BUTTON REPOSITIONED HERE */}
+        <div style={{ marginTop: "25px", width: "100%", textAlign: "center" }}>
+            <button onClick={logout} style={{ background: "transparent", color: "#ef4444", border: "2px solid #ef4444", padding: "10px 24px", borderRadius: "10px", fontSize: "15px", fontWeight: "bold", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "8px", boxShadow: "0 4px 10px rgba(239, 68, 68, 0.1)", transition: "all 0.2s ease" }}>
+                <Power size={16} /> Secure Logout
+            </button>
+        </div>
       </footer>
 
-      <div style={{ textAlign: 'center', marginTop: '40px', paddingBottom: '25px', position: 'relative' }}>
+      <div style={{ textAlign: 'center', marginTop: '40px', paddingBottom: '25px', position: 'relative', zIndex: 1 }}>
         <style>{`@keyframes premium-shine { 0% { background-position: -200% center; } 100% { background-position: 200% center; } } @keyframes float-sparkle { 0%, 100% { transform: translateY(0px) scale(0.8); opacity: 0.4; } 50% { transform: translateY(-4px) scale(1.2); opacity: 1; filter: drop-shadow(0 0 6px #fbbf24); } } @keyframes line-breathe { 0%, 100% { width: 30px; opacity: 0.3; } 50% { width: 60px; opacity: 0.8; box-shadow: 0 0 10px #3b82f6; } } .subhams-brand-text { background: linear-gradient(90deg, #3b82f6, #a855f7, #ec4899, #3b82f6); background-size: 200% auto; color: transparent; -webkit-background-clip: text; background-clip: text; animation: premium-shine 3.5s linear infinite; font-weight: 900; font-size: 14px; letter-spacing: 2px; }`}</style>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><span style={{ animation: 'float-sparkle 2s ease-in-out infinite', fontSize: '13px' }}>✨</span><p style={{ fontSize: '10px', color: '#64748b', fontWeight: '800', margin: 0, letterSpacing: '1.5px' }}>POWERED BY <span className="subhams-brand-text">SUBHAMS</span></p><span style={{ animation: 'float-sparkle 2s ease-in-out infinite 1s', fontSize: '13px' }}>✨</span></div>
         <div style={{ height: '3px', background: 'linear-gradient(90deg, transparent, #3b82f6, #a855f7, transparent)', margin: '8px auto 0 auto', borderRadius: '10px', animation: 'line-breathe 3s ease-in-out infinite' }}></div>
