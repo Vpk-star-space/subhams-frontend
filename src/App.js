@@ -939,7 +939,7 @@ function App() {
     body { background-color: #f1f5f9; margin: 0; color: #334155; }
     .nav-bar { background: #0f172a; color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
     .container { max-width: 1200px; margin: 0 auto; padding: 15px; position: relative; z-index: 1; }
-    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 20px; }
+    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 20px; position: relative; }
     .action-grid { display: grid; grid-template-columns: 35% 65%; gap: 20px; }
     @media (max-width: 900px) { .action-grid { grid-template-columns: 1fr; } }
     .metric-card { text-align: center; padding: 20px; border-radius: 12px; background: white; border: 1px solid #e2e8f0; }
@@ -959,6 +959,58 @@ function App() {
     .insight-red { background: #fef2f2; border-left: 5px solid #ef4444; color: #991b1b; padding: 15px; border-radius: 8px;}
     .insight-blue { background: #eff6ff; border-left: 5px solid #3b82f6; color: #1e40af; padding: 15px; border-radius: 8px;}
     @keyframes fade-in { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+    
+    /* 🟢 3D CENTER COIN CSS */
+    @keyframes flip-coin-3d {
+      0% { transform: rotateY(0deg); }
+      100% { transform: rotateY(360deg); }
+    }
+    .coin-wrapper {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 45px;
+      height: 45px;
+      perspective: 1000px;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .coin-inner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: flip-coin-3d 3s linear infinite;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      border-radius: 50%;
+    }
+    .coin-front, .coin-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%);
+      border: 2px solid #fef08a;
+      color: #fffbeb;
+      text-shadow: 1px 1px 2px rgba(180, 83, 9, 0.8);
+    }
+    .coin-front {
+      font-size: 24px;
+      font-weight: 900;
+    }
+    .coin-back {
+      transform: rotateY(180deg);
+      font-size: 8px;
+      font-weight: bold;
+      text-align: center;
+      line-height: 1.1;
+      padding: 2px;
+    }
   `;
 
   if (isMaintenanceMode) return <MaintenanceScreen />;
@@ -1048,33 +1100,6 @@ function App() {
   return (
     <div>
       <style>{globalStyles}</style>
-
-      {/* 🟢 AMBIENT PREMIUM BACKGROUND ANIMATION */}
-      <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-        <style>{`
-          @keyframes ambient-float {
-            0% { transform: translateY(110vh) rotate(0deg) scale(0.8); opacity: 0; }
-            10% { opacity: 0.1; }
-            90% { opacity: 0.1; }
-            100% { transform: translateY(-10vh) rotate(360deg) scale(1.2); opacity: 0; }
-          }
-          .ambient-money {
-            position: absolute;
-            color: #facc15;
-            font-weight: 900;
-            user-select: none;
-            animation: ambient-float linear infinite;
-            filter: drop-shadow(0 4px 6px rgba(245, 158, 11, 0.2));
-            z-index: 0;
-          }
-        `}</style>
-        <div className="ambient-money" style={{ left: '5%', fontSize: '24px', animationDuration: '18s', animationDelay: '1s' }}>₹</div>
-        <div className="ambient-money" style={{ left: '25%', fontSize: '42px', animationDuration: '25s', animationDelay: '5s' }}>₹</div>
-        <div className="ambient-money" style={{ left: '55%', fontSize: '28px', animationDuration: '20s', animationDelay: '2s' }}>₹</div>
-        <div className="ambient-money" style={{ left: '80%', fontSize: '36px', animationDuration: '22s', animationDelay: '8s' }}>₹</div>
-        <div className="ambient-money" style={{ left: '90%', fontSize: '20px', animationDuration: '15s', animationDelay: '12s' }}>₹</div>
-        <div className="ambient-money" style={{ left: '15%', fontSize: '50px', animationDuration: '30s', animationDelay: '15s', color: 'rgba(16, 185, 129, 0.3)' }}>₹</div>
-      </div>
 
       <div className="marquee-container">
         <div className="marquee-text">🚀 Important Note: Welcome to your Subhams Personal Money Management System! Track your income, manage your expenses, and secure your financial future! Thank You visiting My website! Venkata Pavan Kumar.</div>
@@ -1180,7 +1205,7 @@ function App() {
         </div>
       )}
 
-      <div className="container">
+      <div className="container" style={{ position: 'relative', zIndex: 1 }}>
         
         {isAppLoading && (
           <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "10px", zIndex: 9999 }}>
@@ -1188,7 +1213,7 @@ function App() {
             <div className="center-gold-coin">₹</div>
             <div style={{ background: "rgba(255,255,255,0.8)", padding: "4px 12px", borderRadius: "20px", backdropFilter: "blur(4px)" }}>
                 <div style={{ margin: "0", color: "#0f172a", fontSize: "14px", fontWeight: "900", textAlign: "center" }}>Please wait...</div>
-                <div style={{ margin: "0", color: "#64748b", fontSize: "11px", fontWeight: "700", textAlign: "center" }}>Loading</div>
+                <div style={{ margin: "0", color: "#64748b", fontSize: "11px", fontWeight: "700", textAlign: "center" }}>Loading Server</div>
             </div>
           </div>
         )}
@@ -1220,6 +1245,14 @@ function App() {
           <div className="metric-card"><div className="metric-title">TOTAL EXPENSE <br/>ఖర్చు</div><div className="metric-value" style={{ color: "#ef4444" }}>₹{expense}</div></div>
           <div className="metric-card"><div className="metric-title">PENDING <br/>పెండింగ్</div><div className="metric-value" style={{ color: "#f59e0b" }}>₹{pending}</div></div>
           <div className="metric-card" style={{ backgroundColor: balance >= 0 ? "#f0fdf4" : "#fef2f2" }}><div className="metric-title">BALANCE <br/>నిల్వ</div><div className="metric-value" style={{ color: balance >= 0 ? "#3b82f6" : "#ef4444" }}>₹{balance}</div></div>
+          
+          {/* 🟢 3D CENTER SPINNING COIN */}
+          <div className="coin-wrapper">
+            <div className="coin-inner">
+              <div className="coin-front">₹</div>
+              <div className="coin-back">SUBHAMS<br/>PMMS</div>
+            </div>
+          </div>
         </div>
 
         {smartMsg && (
@@ -1399,10 +1432,10 @@ function App() {
         
         <p style={{ margin: "20px 0 0 0", fontSize: "13px", color: "#94a3b8", fontWeight: "500" }}>© {new Date().getFullYear()} Subhams PMMS. All Rights Reserved.</p>
         
-        {/* 🟢 SECURE LOGOUT BUTTON REPOSITIONED HERE */}
-        <div style={{ marginTop: "25px", width: "100%", textAlign: "center" }}>
-            <button onClick={logout} style={{ background: "transparent", color: "#ef4444", border: "2px solid #ef4444", padding: "10px 24px", borderRadius: "10px", fontSize: "15px", fontWeight: "bold", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "8px", boxShadow: "0 4px 10px rgba(239, 68, 68, 0.1)", transition: "all 0.2s ease" }}>
-                <Power size={16} /> Secure Logout
+        {/* 🟢 SECURE LOGOUT BUTTON DIRECTLY BELOW COPYRIGHT TEXT */}
+        <div style={{ marginTop: "20px" }}>
+            <button onClick={logout} style={{ background: "transparent", color: "#ef4444", border: "2px solid #ef4444", padding: "8px 20px", borderRadius: "8px", fontSize: "14px", fontWeight: "bold", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px", transition: "all 0.2s ease" }}>
+                <Power size={14} /> Logout
             </button>
         </div>
       </footer>
