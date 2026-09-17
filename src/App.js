@@ -7,8 +7,8 @@ import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code, User, Bell, Be
 import InstallPopup from './components/InstallPopup';
 import AdminCommandCenter from './components/AdminCommandCenter';
 
-const isMaintenanceMode = false; 
-const targetRestoreTime = "02-06-2026 at 10:00 AM"; 
+const isMaintenanceMode = true; 
+const targetRestoreTime = "18-09-2026 at 10:00 AM"; 
 const API = process.env.REACT_APP_BACKEND_URL || "https://subhams-backend.onrender.com/api";
 const PUBLIC_VAPID_KEY = process.env.REACT_APP_VAPID_PUBLIC_KEY || "YOUR_PUBLIC_VAPID_KEY_HERE"; 
 
