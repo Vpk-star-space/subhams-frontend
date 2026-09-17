@@ -959,7 +959,7 @@ function App() {
     .insight-blue { background: #eff6ff; border-left: 5px solid #3b82f6; color: #1e40af; padding: 15px; border-radius: 8px;}
     @keyframes fade-in { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
     
-    /* 🟢 3D CENTER COIN CSS (DASHBOARD) - SPEED REDUCED TO 5S */
+    /* 🟢 3D CENTER COIN CSS (DASHBOARD) - SPEED REDUCED TO 8S */
     @keyframes flip-coin-3d {
       0% { transform: rotateY(0deg); }
       100% { transform: rotateY(360deg); }
@@ -980,7 +980,7 @@ function App() {
       height: 100%;
       position: relative;
       transform-style: preserve-3d;
-      animation: flip-coin-3d 5s linear infinite;
+      animation: flip-coin-3d 8s linear infinite;
       box-shadow: 0 4px 8px rgba(0,0,0,0.2);
       border-radius: 50%;
     }
@@ -1011,7 +1011,7 @@ function App() {
       padding: 2px;
     }
 
-    /* 🟢 3D GIANT LOADING COIN CSS (OVERLAY) - SPEED REDUCED TO 4S */
+    /* 🟢 3D GIANT LOADING COIN CSS (OVERLAY) - SPEED REDUCED TO 6S */
     @keyframes flip-coin-3d-giant {
       0% { transform: rotateY(0deg); }
       100% { transform: rotateY(360deg); }
@@ -1027,7 +1027,7 @@ function App() {
       height: 100%;
       position: relative;
       transform-style: preserve-3d;
-      animation: flip-coin-3d-giant 4s linear infinite;
+      animation: flip-coin-3d-giant 6s linear infinite;
       border-radius: 50%;
       box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);
     }
