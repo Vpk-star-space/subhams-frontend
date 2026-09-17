@@ -11,7 +11,8 @@ export default function AdminCommandCenter({ token, onBack }) {
         totalUsers: 0, 
         activeSubscribers: 0, 
         languages: [], 
-        logs: { total_sent: 0, reminders_sent: 0, budget_alerts_sent: 0, privacy_alerts_sent: 0 } 
+        logs: { total_sent: 0, reminders_sent: 0, budget_alerts_sent: 0, privacy_alerts_sent: 0 },
+        features: { calculations: 0, reports: 0 } // 🟢 TELEMETRY DATA
     });
     const [usersList, setUsersList] = useState([]);
     
@@ -195,19 +196,27 @@ export default function AdminCommandCenter({ token, onBack }) {
                 </div>
             )}
 
-            {/* STATS OVERVIEW */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '15px', marginBottom: '25px' }}>
+            {/* STATS OVERVIEW (🟢 WITH TELEMETRY) */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '25px' }}>
                 <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-                    <div style={{ color: '#64748b', fontSize: '12px', fontWeight: 'bold' }}>TOTAL REGISTERED USERS</div>
+                    <div style={{ color: '#64748b', fontSize: '12px', fontWeight: 'bold' }}>TOTAL USERS</div>
                     <div style={{ fontSize: '2rem', fontWeight: '900', color: '#0f172a', marginTop: '5px' }}>{stats.totalUsers}</div>
                 </div>
                 <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-                    <div style={{ color: '#64748b', fontSize: '12px', fontWeight: 'bold' }}>ACTIVE PUSH DEVICES</div>
+                    <div style={{ color: '#64748b', fontSize: '12px', fontWeight: 'bold' }}>PUSH DEVICES</div>
                     <div style={{ fontSize: '2rem', fontWeight: '900', color: '#10b981', marginTop: '5px' }}>{stats.activeSubscribers}</div>
                 </div>
                 <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-                    <div style={{ color: '#64748b', fontSize: '12px', fontWeight: 'bold' }}>TOTAL LOGGED PUSHES</div>
+                    <div style={{ color: '#64748b', fontSize: '12px', fontWeight: 'bold' }}>TOTAL PUSHES</div>
                     <div style={{ fontSize: '2rem', fontWeight: '900', color: '#3b82f6', marginTop: '5px' }}>{stats.logs?.total_sent || 0}</div>
+                </div>
+                <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                    <div style={{ color: '#64748b', fontSize: '12px', fontWeight: 'bold' }}>CALCULATIONS</div>
+                    <div style={{ fontSize: '2rem', fontWeight: '900', color: '#f59e0b', marginTop: '5px' }}>{stats.features?.calculations || 0}</div>
+                </div>
+                <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                    <div style={{ color: '#64748b', fontSize: '12px', fontWeight: 'bold' }}>PDF REPORTS</div>
+                    <div style={{ fontSize: '2rem', fontWeight: '900', color: '#8b5cf6', marginTop: '5px' }}>{stats.features?.reports || 0}</div>
                 </div>
             </div>
 
@@ -512,7 +521,8 @@ export default function AdminCommandCenter({ token, onBack }) {
                                 <th style={{ padding: '10px' }}>Email</th>
                                 <th style={{ padding: '10px' }}>Language</th>
                                 <th style={{ padding: '10px' }}>Mode</th>
-                                <th style={{ padding: '10px' }}>Status</th>
+                                <th style={{ padding: '10px' }}>Email Digest</th>
+                                <th style={{ padding: '10px' }}>Push Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -523,6 +533,9 @@ export default function AdminCommandCenter({ token, onBack }) {
                                     <td style={{ padding: '10px', textTransform: 'uppercase' }}>{u.preferred_language || 'en'}</td>
                                     <td style={{ padding: '10px' }}>
                                         {u.silent_mode ? <span style={{ color: '#d97706', fontWeight: 'bold' }}>Silent 🔕</span> : <span style={{ color: '#10b981' }}>Sound 🔔</span>}
+                                    </td>
+                                    <td style={{ padding: '10px' }}>
+                                        {u.email_digest_enabled !== false ? <span style={{ color: '#10b981', fontWeight: 'bold' }}>ON 🟢</span> : <span style={{ color: '#94a3b8' }}>OFF ⚪</span>}
                                     </td>
                                     <td style={{ padding: '10px' }}>
                                         {u.has_notifications ? <span style={{ color: '#10b981', fontWeight: 'bold' }}>ACTIVE 🟢</span> : <span style={{ color: '#94a3b8' }}>OFF ⚪</span>}

@@ -12,6 +12,8 @@ const targetRestoreTime = "02-06-2026 at 10:00 AM";
 const API = process.env.REACT_APP_BACKEND_URL || "https://subhams-backend.onrender.com/api";
 const PUBLIC_VAPID_KEY = process.env.REACT_APP_VAPID_PUBLIC_KEY || "YOUR_PUBLIC_VAPID_KEY_HERE"; 
 
+const DEVICE_ERROR_MSG = "⚠️ Device Error: Your personal mobile or network is currently stuck or blocking the request. Please check your connection, clear cache, or restart the app.";
+
 const formatDate = (dateString) => {
   if (!dateString) return "";
   const d = new Date(dateString);
@@ -122,7 +124,7 @@ function App() {
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [refreshToken, setRefreshToken] = useState(localStorage.getItem("refreshToken"));
   
-  const [userProfile, setUserProfile] = useState(() => JSON.parse(localStorage.getItem('pmms_user') || '{"username":"","email":"","preferred_language":"en","silent_mode":false}'));
+  const [userProfile, setUserProfile] = useState(() => JSON.parse(localStorage.getItem('pmms_user') || '{"username":"","email":"","preferred_language":"en","silent_mode":false,"email_digest_enabled":true}'));
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [editName, setEditName] = useState("");
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -279,7 +281,7 @@ function App() {
       });
       
       setIsAppLocked(false);
-    } catch (err) { alert("Unlock failed. Please try again."); } 
+    } catch (err) { alert(DEVICE_ERROR_MSG); } 
   };
 
   const login = async () => {
@@ -296,7 +298,7 @@ function App() {
 
       const contentType = res.headers.get("content-type");
       if (res.status === 429 && (!contentType || !contentType.includes("json"))) {
-         return alert("⚠️ Server Firewall: You clicked login too many times. Please wait a few minutes.");
+         return alert(DEVICE_ERROR_MSG);
       }
       
       const data = await res.json();
@@ -311,7 +313,8 @@ function App() {
           username: data.user?.username || username, 
           email: data.user?.email || email, 
           preferred_language: data.user?.preferred_language || 'en',
-          silent_mode: data.user?.silent_mode || false
+          silent_mode: data.user?.silent_mode || false,
+          email_digest_enabled: data.user?.email_digest_enabled !== false
         };
         localStorage.setItem("pmms_user", JSON.stringify(profileData));
         setUserProfile(profileData);
@@ -326,7 +329,7 @@ function App() {
           return;
         }
         if (res.status === 429) {
-          return alert(`⚠️ Network Firewall: ${data.error || data.message || "Too many attempts. Wait a few minutes before trying again."}`);
+          return alert(DEVICE_ERROR_MSG);
         }
         const newAttempts = failedAttempts + 1;
         if (newAttempts >= 5) { 
@@ -338,7 +341,7 @@ function App() {
         }
       }
     } catch (err) { 
-      alert("Backend server is offline or unreachable."); 
+      alert(DEVICE_ERROR_MSG); 
     } finally { 
       setIsServerWaking(false); 
     }
@@ -358,7 +361,8 @@ function App() {
           username: data.user?.username || "Google User", 
           email: data.user?.email || "", 
           preferred_language: data.user?.preferred_language || 'en',
-          silent_mode: data.user?.silent_mode || false
+          silent_mode: data.user?.silent_mode || false,
+          email_digest_enabled: data.user?.email_digest_enabled !== false
         };
         localStorage.setItem("pmms_user", JSON.stringify(profileData));
         setUserProfile(profileData);
@@ -366,8 +370,8 @@ function App() {
         setToken(data.accessToken); setRefreshToken(data.refreshToken);
         
         if (localStorage.getItem("subhams_app_lock") === "true") setIsAppLocked(true);
-      } else { alert("Google Auth failed in backend."); }
-    } catch (err) { alert("Server is offline."); }
+      } else { alert(DEVICE_ERROR_MSG); }
+    } catch (err) { alert(DEVICE_ERROR_MSG); }
     finally { setIsServerWaking(false); }
   };
 
@@ -378,7 +382,7 @@ function App() {
       const res = await fetch(`${API}/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, username, password }) });
       const data = await res.json();
       if (res.ok) { alert("OTP sent to your email!"); setAuthMode("otp"); } else { alert(data.error || "Registration failed"); }
-    } catch (err) { alert("Backend server is offline."); } finally { setIsServerWaking(false); }
+    } catch (err) { alert(DEVICE_ERROR_MSG); } finally { setIsServerWaking(false); }
   };
 
   const verifyOtpAndRegister = async () => {
@@ -388,7 +392,7 @@ function App() {
       const res = await fetch(`${API}/auth/verify-otp`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, username, password, otp }) });
       const data = await res.json();
       if (res.ok) { alert("Success! You can now log in."); setAuthMode("login"); setPassword(""); setOtp(""); } else { alert(data.error || "Invalid OTP"); }
-    } catch (err) { alert("Backend server is offline."); } finally { setIsServerWaking(false); }
+    } catch (err) { alert(DEVICE_ERROR_MSG); } finally { setIsServerWaking(false); }
   };
 
   const handleForgotPassword = async () => {
@@ -398,7 +402,7 @@ function App() {
       const res = await fetch(`${API}/auth/forgot-password`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
       const data = await res.json();
       if (res.ok) { alert("OTP sent! Check your email."); setAuthMode("reset_otp"); } else { alert(data.error || "Failed to send OTP."); }
-    } catch (err) { alert("Connection error: Cannot reach the server."); } finally { setIsServerWaking(false); }
+    } catch (err) { alert(DEVICE_ERROR_MSG); } finally { setIsServerWaking(false); }
   };
 
   const handleResetPassword = async () => {
@@ -412,15 +416,16 @@ function App() {
         setAuthMode("login"); setOtp(""); setNewPassword(""); setPassword(""); 
         setLockoutTimer(0); localStorage.removeItem('lockoutUntil'); setFailedAttempts(0); localStorage.removeItem('localFailedAttempts');
       } else { alert(data.error || data.message || "Invalid OTP."); }
-    } catch (err) { alert("Server is offline."); } finally { setIsServerWaking(false); }
+    } catch (err) { alert(DEVICE_ERROR_MSG); } finally { setIsServerWaking(false); }
   };
 
   const logout = () => { 
     localStorage.removeItem("token"); localStorage.removeItem("refreshToken"); localStorage.removeItem("pmms_user");
-    setToken(null); setRefreshToken(null); setUserProfile({username:"", email:"", preferred_language: "en", silent_mode: false});
+    setToken(null); setRefreshToken(null); setUserProfile({username:"", email:"", preferred_language: "en", silent_mode: false, email_digest_enabled: true});
     setTransactions([]); setAllTransactions([]); setMonthlyChartData([]); setInsights(null); 
     setPushEnabled(false);
     setAuthMode("login");
+    setShowProfileModal(false);
   };
 
   const updateProfileName = async () => {
@@ -438,10 +443,10 @@ function App() {
               alert("✅ Name updated successfully!"); 
               setShowProfileModal(false);
           } else {
-              alert("Failed to update name");
+              alert(DEVICE_ERROR_MSG);
           }
       } catch (err) {
-          alert("Network error.");
+          alert(DEVICE_ERROR_MSG);
       }
   };
 
@@ -456,11 +461,24 @@ function App() {
               const updated = { ...userProfile, preferred_language: lang };
               setUserProfile(updated);
               localStorage.setItem("pmms_user", JSON.stringify(updated));
-          } else {
-              console.error("Failed to update language.");
           }
       } catch (err) {
-          console.error("Network error.");
+          console.error(DEVICE_ERROR_MSG);
+      }
+  };
+
+  const toggleEmailDigest = async (turnOn) => {
+      try {
+          await fetch(`${API}/notifications/toggle-email-digest`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ email_digest_enabled: turnOn })
+          });
+          const updated = { ...userProfile, email_digest_enabled: turnOn };
+          setUserProfile(updated);
+          localStorage.setItem("pmms_user", JSON.stringify(updated));
+      } catch (error) {
+          alert(DEVICE_ERROR_MSG);
       }
   };
 
@@ -496,8 +514,7 @@ function App() {
           localStorage.setItem("pmms_user", JSON.stringify(updated));
           alert(userProfile.preferred_language === 'te' ? "✅ నోటిఫికేషన్‌లు ప్రారంభించబడ్డాయి!" : "✅ Notifications Enabled! Welcome alert sent.");
       } catch (error) {
-          console.error("Error setting up push notifications:", error);
-          alert("Failed to enable notifications. Ensure your site uses HTTPS.");
+          alert(DEVICE_ERROR_MSG);
       }
       setIsProcessingPush(false);
   };
@@ -515,7 +532,7 @@ function App() {
           localStorage.setItem("pmms_user", JSON.stringify(updated));
           alert(turnSilent ? "🔕 Silent Mode Activated. Notifications will display without sound." : "🔔 Sound Restored! Notifications are now loud.");
       } catch (error) {
-          alert("Failed to toggle silent mode.");
+          alert(DEVICE_ERROR_MSG);
       }
       setIsProcessingPush(false);
   };
@@ -535,7 +552,7 @@ function App() {
               localStorage.setItem("pmms_user", JSON.stringify(updated));
               alert("🔕 Notifications turned off completely. Banner is restored.");
           } catch (error) {
-              alert("Failed to turn off notifications.");
+              alert(DEVICE_ERROR_MSG);
           }
       }
       setIsProcessingPush(false);
@@ -574,7 +591,7 @@ function App() {
       fetch(`${API}/notifications/check-behavior`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
-      }).catch(err => console.error("Behavior check error:", err));
+      }).catch(err => console.log("Behavior check skipped"));
 
       const tData = await tRes.json(); 
       const mData = await mRes.json(); 
@@ -585,7 +602,6 @@ function App() {
         // Format month names for the chart based on user preference
         const formattedChartData = mData.map(item => {
           let monthLabel = item.name;
-          // E.g. splits "Oct 2024" into ["Oct", "2024"]
           const parts = monthLabel.split(' ');
           if (parts.length === 2 && userProfile.preferred_language === 'te') {
               monthLabel = `${getTeluguMonth(parts[0])} ${parts[1]}`;
@@ -595,7 +611,7 @@ function App() {
         setMonthlyChartData(formattedChartData);
       }
       setInsights(iData);
-    } catch (err) { console.error("Fetch Error:", err); } 
+    } catch (err) { console.log("Background fetch silent fail"); } 
     finally { setIsServerWaking(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, refreshAuthToken, isAppLocked, userProfile.preferred_language]);
@@ -744,7 +760,7 @@ function App() {
         if (i > 0) doc.addPage();
         doc.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
       } catch (error) { 
-        console.error("PDF Error", error);
+        alert(DEVICE_ERROR_MSG);
       } finally { 
         document.body.removeChild(reportDiv); 
       }
@@ -766,7 +782,7 @@ function App() {
       if (res.ok) { 
         setTitle(""); setAmount(""); setEditingId(null); setCategory("Other"); setDate(new Date().toISOString().split('T')[0]); fetchAllData(); 
       } else { const errData = await res.json(); alert("Error: " + errData.message); }
-    } catch (err) { alert("Server Error."); }
+    } catch (err) { alert(DEVICE_ERROR_MSG); }
   };
 
   const handleEdit = (t) => { 
@@ -782,7 +798,7 @@ function App() {
     try {
       const res = await fetch(`${API}/transactions/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) fetchAllData(); 
-    } catch (err) { alert("Network Error."); }
+    } catch (err) { alert(DEVICE_ERROR_MSG); }
   };
 
   const applyFilters = async () => {
@@ -790,7 +806,7 @@ function App() {
       const query = new URLSearchParams({ type: filterType, category: filterCategory, search: searchQuery, startDate: filterStartDate, endDate: filterEndDate }).toString();
       const res = await fetch(`${API}/transactions/filter?${query}`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json(); if (Array.isArray(data)) setTransactions(data); 
-    } catch (err) { console.error("Search failed:", err); }
+    } catch (err) { alert(DEVICE_ERROR_MSG); }
   };
 
   const clearFilters = () => { setFilterType("All"); setFilterCategory("All"); setSearchQuery(""); setFilterStartDate(""); setFilterEndDate(""); fetchAllData(); };
@@ -837,10 +853,13 @@ function App() {
     
     const isTelugu = (interestResult.shareLang || interestData.shareLang) === 'te';
     
-    // Explicit English share text without "estimate" note and with app link
+    // 🟢 DYNAMIC RATE TEXT FOR SHARING
+    const rateTextEn = interestData.interestType === 'Local' ? `${interestData.rate} Rupees per month` : `${interestData.rate}% APR`;
+    const rateTextTe = interestData.interestType === 'Local' ? `నెలకు ${interestData.rate} రూపాయలు` : `${interestData.rate}% వార్షిక రేటు`;
+    
     const shareText = isTelugu 
-      ? `📊 *Subhams వడ్డీ కాలిక్యులేటర్*\n\n💰 అసలు మొత్తం: ₹${interestResult.principal}\n📅 తేదీలు: ${interestResult.startDate} నుండి ${interestResult.endDate} వరకు\n⏳ వ్యవధి: ${interestResult.totalDays} రోజులు (${interestResult.totalMonths.toFixed(1)} నెలలు)\n📈 మొత్తం వడ్డీ: ₹${Math.round(interestResult.calculatedInterest)}\n✅ చెల్లించాల్సిన మొత్తం: ₹${Math.round(interestResult.finalAmount)}\n\n🔗 కాలిక్యులేట్ చేయడానికి లింక్:\nhttps://pmms.subhamsnetworks.in`
-      : `📊 *Subhams Interest Calculator*\n\n💰 Principal Amount: ₹${interestResult.principal}\n📅 Dates: ${interestResult.startDate} to ${interestResult.endDate}\n⏳ Duration: ${interestResult.totalDays} Days\n📈 Total Interest: ₹${Math.round(interestResult.calculatedInterest)}\n✅ Total to Pay: ₹${Math.round(interestResult.finalAmount)}\n\n🔗 Calculate yours here:\nhttps://pmms.subhamsnetworks.in`;
+      ? `📊 *Subhams వడ్డీ లెక్కల వివరాలు*\n\n💰 అసలు మొత్తం: ₹${interestResult.principal}\n📈 వడ్డీ రేటు: ${rateTextTe}\n📅 తేదీలు: ${interestResult.startDate} నుండి ${interestResult.endDate} వరకు\n⏳ వ్యవధి: ${interestResult.totalDays} రోజులు (${interestResult.totalMonths.toFixed(1)} నెలలు)\n💵 మొత్తం వడ్డీ: ₹${Math.round(interestResult.calculatedInterest)}\n✅ చెల్లించాల్సిన మొత్తం: ₹${Math.round(interestResult.finalAmount)}\n\n🔗 మీ వడ్డీని ఇక్కడే లెక్కించండి:\nhttps://pmms.subhamsnetworks.in`
+      : `📊 *Subhams Interest Statement*\n\n💰 Principal Amount: ₹${interestResult.principal}\n📈 Interest Rate: ${rateTextEn}\n📅 Dates: ${interestResult.startDate} to ${interestResult.endDate}\n⏳ Duration: ${interestResult.totalDays} Days (${interestResult.totalMonths.toFixed(1)} Months)\n💵 Accrued Interest: ₹${Math.round(interestResult.calculatedInterest)}\n✅ Total Payable: ₹${Math.round(interestResult.finalAmount)}\n\n🔗 Calculate yours here:\nhttps://pmms.subhamsnetworks.in`;
 
     if (navigator.share) {
       try {
@@ -866,19 +885,32 @@ function App() {
   if (income > 0 || expense > 0) {
     const topDrain = insights?.topCategory || "Other";
     const topAmount = insights?.amount || 0;
-    if (income > 0 && expense === 0) { 
-      smartMsg = `100% of income (₹${income}) has been saved.`; smartMsgTe = `100% ఆదాయం (₹${income}) ఆదా చేయబడింది.`; insightClass = "insight-green"; 
-    } else if (expense > income && income > 0) { 
+    
+    // 🟢 ADVANCED FINANCIAL ADVICE ENGINE
+    if (expense > income) {
+      const deficit = expense - income;
+      smartMsg = `⚠️ Budget Alert: Expenses exceed income by ₹${deficit}. Your highest drain is ${topDrain} (₹${topAmount}). Cut back here to restore a positive balance.`; 
+      smartMsgTe = `⚠️ బడ్జెట్ హెచ్చరిక: ఖర్చులు ఆదాయం కంటే ₹${deficit} ఎక్కువగా ఉన్నాయి. ప్రధాన ఖర్చు ${topDrain} (₹${topAmount}). బడ్జెట్‌ను సరిదిద్దడానికి ఈ ఖర్చును తగ్గించండి.`; 
+      insightClass = "insight-red"; 
+    } else if (income > 0 && (expense / income) >= 0.7) { 
       const spendPercent = Math.round((expense / income) * 100);
-      smartMsg = `Total expenses equal ${spendPercent}% of income. Deficit: ₹${expense - income}. Top expense: ${topDrain} (₹${topAmount}).`; 
-      smartMsgTe = `ఖర్చులు ఆదాయంలో ${spendPercent}%. లోటు: ₹${expense - income}. ప్రధాన ఖర్చు: ${topDrain} (₹${topAmount}).`; insightClass = "insight-red"; 
-    } else if (expense > 0 && income === 0) { 
-      smartMsg = `Logged ₹${expense} in expenses with no income recorded.`; smartMsgTe = `₹${expense} ఖర్చు నమోదు చేయబడింది, కానీ ఆదాయం లేదు.`; insightClass = "insight-red"; 
+      smartMsg = `⚠️ Caution: You have consumed ${spendPercent}% of income. Only ₹${balance} remains. Limit non-essential purchases.`; 
+      smartMsgTe = `⚠️ జాగ్రత్త: మీ ఆదాయంలో ${spendPercent}% ఖర్చయింది. కేవలం ₹${balance} మాత్రమే మిగిలి ఉంది. అనవసర ఖర్చులను నియంత్రించండి.`; 
+      insightClass = "insight-red"; 
+    } else if (income > 0 && (expense / income) <= 0.4) { 
+      const savePercent = 100 - Math.round((expense / income) * 100);
+      smartMsg = `🌟 Wealth Builder: You saved ${savePercent}% (₹${balance}) this month. Outstanding financial discipline.`; 
+      smartMsgTe = `🌟 అద్భుతమైన పొదుపు: ఈ నెలలో మీరు ${savePercent}% (₹${balance}) ఆదా చేశారు. మీ ఆర్థిక క్రమశిక్షణ అభినందనీయం.`; 
+      insightClass = "insight-green"; 
+    } else if (expense > 0 && income === 0) {
+      smartMsg = `Logged ₹${expense} in expenses with no income recorded.`; 
+      smartMsgTe = `₹${expense} ఖర్చు నమోదు చేయబడింది, కానీ ఆదాయం లేదు.`; 
+      insightClass = "insight-red";
     } else { 
       const spendPercent = Math.round((expense / income) * 100); const savePercent = 100 - spendPercent;
       smartMsg = `Saved ${savePercent}% | Spent ${spendPercent}%. Top expense: ${topDrain} (₹${topAmount}).`; 
       smartMsgTe = `${savePercent}% ఆదా చేశారు | ${spendPercent}% ఖర్చు చేశారు. ప్రధాన ఖర్చు: ${topDrain} (₹${topAmount}).`; 
-      if (spendPercent <= 30) insightClass = "insight-green"; else if (spendPercent >= 75) insightClass = "insight-red"; else insightClass = "insight-blue"; 
+      insightClass = "insight-blue"; 
     }
   }
 
@@ -945,7 +977,7 @@ function App() {
             <button style={{ padding: "15px", background: lockoutTimer > 0 ? "#94a3b8" : "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }} onClick={login} disabled={lockoutTimer > 0}>Login</button>
             <p style={{ fontSize: "14px", margin: "5px 0" }}>Don't have an account? <span style={{ color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("register")}>Create one here</span></p>
             <div style={{ margin: "10px 0", color: "#cbd5e1", fontSize: "14px" }}>────── OR ──────</div>
-            <div style={{ display: "flex", justifyContent: "center" }}><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => alert("Google Error")} /></div>
+            <div style={{ display: "flex", justifyContent: "center" }}><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => alert(DEVICE_ERROR_MSG)} /></div>
           </div>
         )}
         {authMode === "register" && (
@@ -1015,8 +1047,6 @@ function App() {
           >
               {userProfile.username ? userProfile.username.charAt(0) : <User size={18}/>}
           </div>
-
-          <button style={{ padding: "10px", background: "transparent", color: "#ef4444", border: "1px solid #ef4444", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" }} onClick={logout}>Exit</button>
         </div>
       </nav>
 
@@ -1077,9 +1107,23 @@ function App() {
                         )}
                     </div>
 
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0", marginTop: "10px" }}>
+                        <div>
+                            <p style={{ margin: 0, fontSize: "13px", fontWeight: "bold", color: "#0f172a" }}>Offline Email Reports</p>
+                            <p style={{ margin: 0, fontSize: "11px", color: "#64748b" }}>Receive summary emails when inactive</p>
+                        </div>
+                        <button onClick={() => toggleEmailDigest(!userProfile.email_digest_enabled)} style={{ padding: "6px 12px", background: userProfile.email_digest_enabled !== false ? "#10b981" : "#cbd5e1", color: "white", border: "none", borderRadius: "20px", fontWeight: "bold", cursor: "pointer", fontSize: "12px", transition: "0.3s" }}>
+                            {userProfile.email_digest_enabled !== false ? "ON" : "OFF"}
+                        </button>
+                    </div>
+
                     {localStorage.getItem("subhams_app_lock") !== "true" && (
                         <button style={{ padding: "12px", background: "#f8fafc", color: "#0f172a", border: "1px solid #e2e8f0", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginTop: "5px" }} onClick={() => { setShowProfileModal(false); enableAppLock(); }}><Lock size={16} /> Enable Biometric App Lock</button>
                     )}
+
+                    <button onClick={logout} style={{ width: "100%", padding: "14px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginTop: "15px" }}>
+                        Exit Dashboard
+                    </button>
                 </div>
             </div>
         </div>
@@ -1087,7 +1131,7 @@ function App() {
 
       <div className="container" style={{ position: 'relative', minHeight: '65vh' }}>
         {isServerWaking && (
-          <div style={{ position: "absolute", top: "15px", right: "15px", background: "rgba(255, 255, 255, 0.95)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", gap: "12px", zIndex: 50, borderRadius: "50px", padding: "8px 20px 8px 8px", boxShadow: "0 10px 25px rgba(0,0,0,0.15)", border: "1px solid #e2e8f0" }}>
+          <div style={{ position: "fixed", top: "20px", left: "50%", transform: "translateX(-50%)", background: "rgba(255, 255, 255, 0.95)", backdropFilter: "blur(10px)", display: "flex", alignItems: "center", gap: "12px", zIndex: 9999, borderRadius: "50px", padding: "8px 20px 8px 8px", boxShadow: "0 10px 25px rgba(0,0,0,0.15)", border: "1px solid #e2e8f0" }}>
             <style>{`@keyframes coin-spin-fast { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(360deg); } } .corner-gold-coin { border-radius: 50%; background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%); box-shadow: inset 0 0 8px rgba(180, 83, 9, 0.8), 0 4px 10px rgba(245, 158, 11, 0.4); display: flex; align-items: center; justify-content: center; color: #fffbeb; font-weight: 900; text-shadow: 1px 2px 2px rgba(180, 83, 9, 0.8); animation: coin-spin-fast 1.5s linear infinite; width: 35px; height: 35px; font-size: 18px; border: 2px solid #fef08a; flex-shrink: 0; }`}</style>
             <div className="corner-gold-coin">₹</div>
             <div style={{ display: 'flex', flexDirection: 'column' }}><span style={{ margin: "0", color: "#0f172a", fontSize: "14px", fontWeight: "900", letterSpacing: "0.5px" }}>Syncing...</span><span style={{ margin: "0", color: "#64748b", fontSize: "10px", fontWeight: "700" }}>Waking Server</span></div>
