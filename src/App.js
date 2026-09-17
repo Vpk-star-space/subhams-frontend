@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Ba
 import { GoogleLogin } from '@react-oauth/google';
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas"; 
-import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code, User, Bell, BellOff, BellRing, Check, X } from 'lucide-react'; 
+import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code, User, Bell, BellOff, BellRing, Check, X, Share2 } from 'lucide-react'; 
 import InstallPopup from './components/InstallPopup';
 import AdminCommandCenter from './components/AdminCommandCenter';
 
@@ -32,6 +32,15 @@ const formatDateTime = (dateObj) => {
   const ampm = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12 || 12; 
   return `${day}-${month}-${year} ${hours}:${minutes} ${ampm}`;
+};
+
+const getTeluguMonth = (monthName) => {
+  const monthsMap = {
+    'Jan': 'జనవరి', 'Feb': 'ఫిబ్రవరి', 'Mar': 'మార్చి', 'Apr': 'ఏప్రిల్',
+    'May': 'మే', 'Jun': 'జూన్', 'Jul': 'జూలై', 'Aug': 'ఆగస్టు',
+    'Sep': 'సెప్టెంబర్', 'Oct': 'అక్టోబర్', 'Nov': 'నవంబర్', 'Dec': 'డిసెంబర్'
+  };
+  return monthsMap[monthName] || monthName;
 };
 
 const bufferToBase64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
@@ -145,8 +154,15 @@ function App() {
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
   
-  const [interestData, setInterestData] = useState({ principal: "", rate: "", time: "" });
-  const [interestResult, setInterestResult] = useState({});
+  const [interestData, setInterestData] = useState({ 
+    principal: "", 
+    startDate: "", 
+    endDate: "", 
+    interestType: "Local", 
+    rate: "",
+    shareLang: "en"
+  });
+  const [interestResult, setInterestResult] = useState(null);
 
   const formRef = useRef(null); 
   const [isAdminView, setIsAdminView] = useState(false);
@@ -560,14 +576,29 @@ function App() {
         headers: { Authorization: `Bearer ${token}` }
       }).catch(err => console.error("Behavior check error:", err));
 
-      const tData = await tRes.json(); const mData = await mRes.json(); const iData = await iRes.json();
+      const tData = await tRes.json(); 
+      const mData = await mRes.json(); 
+      const iData = await iRes.json();
+      
       if (Array.isArray(tData)) { setTransactions(tData); setAllTransactions(tData); }
-      if (Array.isArray(mData)) setMonthlyChartData(mData);
+      if (Array.isArray(mData)) {
+        // Format month names for the chart based on user preference
+        const formattedChartData = mData.map(item => {
+          let monthLabel = item.name;
+          // E.g. splits "Oct 2024" into ["Oct", "2024"]
+          const parts = monthLabel.split(' ');
+          if (parts.length === 2 && userProfile.preferred_language === 'te') {
+              monthLabel = `${getTeluguMonth(parts[0])} ${parts[1]}`;
+          }
+          return { ...item, name: monthLabel };
+        });
+        setMonthlyChartData(formattedChartData);
+      }
       setInsights(iData);
     } catch (err) { console.error("Fetch Error:", err); } 
     finally { setIsServerWaking(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, refreshAuthToken, isAppLocked]);
+  }, [token, refreshAuthToken, isAppLocked, userProfile.preferred_language]);
 
   useEffect(() => { fetchAllData(); }, [fetchAllData]);
 
@@ -764,11 +795,65 @@ function App() {
 
   const clearFilters = () => { setFilterType("All"); setFilterCategory("All"); setSearchQuery(""); setFilterStartDate(""); setFilterEndDate(""); fetchAllData(); };
 
-  const calculateInterest = async () => {
-    try {
-      const res = await fetch(`${API}/transactions/interest`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(interestData) });
-      const data = await res.json(); setInterestResult(data);
-    } catch (err) { alert("Failed to calculate interest"); }
+  const calculateInterest = () => {
+    const { principal, startDate, endDate, interestType, rate, shareLang } = interestData;
+    if (!startDate || !endDate || !principal || !rate) return alert("Please fill all fields");
+
+    const p = Number(principal);
+    const r = Number(rate);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (start > end) return alert("Start date cannot be after end date");
+
+    const timeDifference = end.getTime() - start.getTime();
+    const totalDays = Math.ceil(timeDifference / (1000 * 3600 * 24));
+    const totalMonths = totalDays / 30;
+
+    let calculatedInterest = 0;
+    if (interestType === 'Local') {
+      // Local village style: eg. ₹2 per ₹100 per month
+      calculatedInterest = (p / 100) * r * totalMonths;
+    } else {
+      // Bank style: Annual Percentage Rate (APR)
+      calculatedInterest = (p * r * totalDays) / (100 * 365);
+    }
+
+    const finalAmount = p + calculatedInterest;
+    // Calculate daily and weekly breakdown
+    const daily = totalDays > 0 ? (calculatedInterest / totalDays) : 0;
+    const weekly = daily * 7;
+
+    setInterestResult({ 
+      totalDays, totalMonths, calculatedInterest, finalAmount, principal: p,
+      dailyInterest: daily, weeklyInterest: weekly,
+      startDate: formatDate(startDate), endDate: formatDate(endDate),
+      shareLang: shareLang || "en"
+    });
+  };
+
+  const handleShare = async () => {
+    if (!interestResult) return;
+    
+    const isTelugu = (interestResult.shareLang || interestData.shareLang) === 'te';
+    
+    // Explicit English share text without "estimate" note and with app link
+    const shareText = isTelugu 
+      ? `📊 *Subhams వడ్డీ కాలిక్యులేటర్*\n\n💰 అసలు మొత్తం: ₹${interestResult.principal}\n📅 తేదీలు: ${interestResult.startDate} నుండి ${interestResult.endDate} వరకు\n⏳ వ్యవధి: ${interestResult.totalDays} రోజులు (${interestResult.totalMonths.toFixed(1)} నెలలు)\n📈 మొత్తం వడ్డీ: ₹${Math.round(interestResult.calculatedInterest)}\n✅ చెల్లించాల్సిన మొత్తం: ₹${Math.round(interestResult.finalAmount)}\n\n🔗 కాలిక్యులేట్ చేయడానికి లింక్:\nhttps://pmms.subhamsnetworks.in`
+      : `📊 *Subhams Interest Calculator*\n\n💰 Principal Amount: ₹${interestResult.principal}\n📅 Dates: ${interestResult.startDate} to ${interestResult.endDate}\n⏳ Duration: ${interestResult.totalDays} Days\n📈 Total Interest: ₹${Math.round(interestResult.calculatedInterest)}\n✅ Total to Pay: ₹${Math.round(interestResult.finalAmount)}\n\n🔗 Calculate yours here:\nhttps://pmms.subhamsnetworks.in`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Subhams PMMS Calculation',
+          text: shareText,
+        });
+      } catch (error) {
+        console.log('Error sharing', error);
+      }
+    } else {
+      alert(isTelugu ? "మీ బ్రౌజర్‌లో షేరింగ్ సపోర్ట్ లేదు." : "Sharing is not supported on this browser/device.");
+    }
   };
 
   const income = allTransactions.filter(t => t.type === "income").reduce((a, b) => a + Number(b.amount), 0);
@@ -1125,17 +1210,54 @@ function App() {
           </div>
         </div>
 
-        <div style={{ maxWidth: '700px', margin: '20px auto 0 auto', backgroundColor: "white", borderRadius: "16px", padding: "25px", border: "1px solid #e2e8f0" }}>
-          <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}><Calculator size={22} color="#3b82f6" /> Simple Interest Calculator</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "15px", marginBottom: "15px", marginTop: "20px" }}>
-            <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="Principal (+/- ₹)" onChange={(e) => setInterestData({...interestData, principal: e.target.value})} />
-            <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="Rate (%)" onChange={(e) => setInterestData({...interestData, rate: e.target.value})} />
-            <input style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="Time (Months)" onChange={(e) => setInterestData({...interestData, time: e.target.value})} />
+        <div style={{ maxWidth: '750px', margin: '20px auto 0 auto', backgroundColor: "white", borderRadius: "16px", padding: "25px", border: "1px solid #e2e8f0" }}>
+          <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}><Calculator size={22} color="#3b82f6" /> Date & Interest Calculator</h3>
+          
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "15px", marginBottom: "20px", marginTop: "20px" }}>
+            <div style={{ display: "flex", flexDirection: "column" }}><label style={{ fontSize: "12px", fontWeight: "bold", color: "#64748b", marginBottom: "5px" }}>Principal (₹)</label><input type="number" style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="e.g., 10000" value={interestData.principal} onChange={(e) => setInterestData({...interestData, principal: e.target.value})} /></div>
+            
+            <div style={{ display: "flex", flexDirection: "column" }}><label style={{ fontSize: "12px", fontWeight: "bold", color: "#64748b", marginBottom: "5px" }}>Calculation Method</label>
+              <select style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "14px", backgroundColor: "white", outline: "none", fontWeight: "bold" }} value={interestData.interestType} onChange={(e) => setInterestData({...interestData, interestType: e.target.value})}>
+                <option value="Local">Local Style (e.g., 2, 3 Rupees Interest)</option>
+                <option value="Percentage">Bank Style (Annual % Rate)</option>
+              </select>
+            </div>
+            
+            <div style={{ display: "flex", flexDirection: "column" }}><label style={{ fontSize: "12px", fontWeight: "bold", color: "#64748b", marginBottom: "5px" }}>Interest Rate</label><input type="number" style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder={interestData.interestType === 'Local' ? "e.g., 2 (for 2 Rupees)" : "e.g., 12 (for 12%)"} value={interestData.rate} onChange={(e) => setInterestData({...interestData, rate: e.target.value})} /></div>
+            
+            <div style={{ display: "flex", flexDirection: "column" }}><label style={{ fontSize: "12px", fontWeight: "bold", color: "#64748b", marginBottom: "5px" }}>Start Date</label><input type="date" style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} value={interestData.startDate} onChange={(e) => setInterestData({...interestData, startDate: e.target.value})} /></div>
+            
+            <div style={{ display: "flex", flexDirection: "column" }}><label style={{ fontSize: "12px", fontWeight: "bold", color: "#64748b", marginBottom: "5px" }}>End Date</label><input type="date" style={{ padding: "14px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} value={interestData.endDate} onChange={(e) => setInterestData({...interestData, endDate: e.target.value})} /></div>
+
+            <div style={{ display: "flex", flexDirection: "column" }}><label style={{ fontSize: "12px", fontWeight: "bold", color: "#3b82f6", marginBottom: "5px" }}>Share Language / భాష</label>
+              <select style={{ padding: "14px", border: "1px solid #93c5fd", borderRadius: "8px", fontSize: "14px", backgroundColor: "white", outline: "none", fontWeight: "bold" }} value={interestData.shareLang} onChange={(e) => setInterestData({...interestData, shareLang: e.target.value})}>
+                <option value="en">English (Share)</option>
+                <option value="te">తెలుగు (Share)</option>
+              </select>
+            </div>
           </div>
-          <button style={{ width: "100%", padding: "14px", background: "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }} onClick={calculateInterest}>Calculate Interest</button>
-          {interestResult.interest !== undefined && (
-            <div className="insight-green" style={{ marginTop: "20px", padding: "15px", borderRadius: "8px", borderLeft: "5px solid #10b981", textAlign: 'center' }}>
-              <p style={{ margin: "5px 0", fontSize: "16px" }}>Earned Interest: <b style={{color: '#065f46'}}>₹{interestResult.interest}</b></p><p style={{ margin: "5px 0", fontSize: "16px" }}>Total Maturity Amount: <b style={{color: '#065f46'}}>₹{interestResult.total}</b></p>
+          
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button style={{ flex: 1, padding: "16px", background: "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 10px rgba(59, 130, 246, 0.3)" }} onClick={calculateInterest}>Calculate Amount</button>
+            <button style={{ padding: "16px", background: "#e2e8f0", color: "#334155", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }} onClick={() => { setInterestData({ principal: "", startDate: "", endDate: "", interestType: "Local", rate: "", shareLang: "en" }); setInterestResult(null); }}>Clear</button>
+          </div>
+          
+          {interestResult && (
+            <div className="insight-green" style={{ marginTop: "20px", padding: "20px", borderRadius: "12px", borderLeft: "5px solid #10b981", textAlign: 'center', backgroundColor: "#f0fdf4" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "10px", marginBottom: "15px", borderBottom: "1px solid #cbd5e1", paddingBottom: "15px" }}>
+                <div style={{ flex: "1 1 30%" }}><p style={{ margin: 0, fontSize: "13px", color: "#64748b", fontWeight: "bold" }}>Duration</p><h4 style={{ margin: "5px 0 0 0", color: "#0f172a", fontSize: "18px" }}>{interestResult.totalDays} Days <br/><span style={{fontSize: "13px", color: "#64748b"}}>({interestResult.totalMonths.toFixed(1)} Months)</span></h4></div>
+                <div style={{ flex: "1 1 30%" }}><p style={{ margin: 0, fontSize: "13px", color: "#64748b", fontWeight: "bold" }}>Total Interest</p><h4 style={{ margin: "5px 0 0 0", color: "#065f46", fontSize: "18px" }}>₹{Math.round(interestResult.calculatedInterest)}</h4></div>
+                <div style={{ flex: "1 1 30%" }}><p style={{ margin: 0, fontSize: "13px", color: "#64748b", fontWeight: "bold" }}>Maturity Amount</p><h4 style={{ margin: "5px 0 0 0", color: "#065f46", fontSize: "22px", fontWeight: "900" }}>₹{Math.round(interestResult.finalAmount)}</h4></div>
+              </div>
+              
+              <div style={{ display: "flex", justifyContent: "space-around", marginBottom: "20px", backgroundColor: "white", padding: "10px", borderRadius: "8px", border: "1px dashed #10b981" }}>
+                <div><p style={{ margin: 0, fontSize: "12px", color: "#64748b" }}>Daily Growth</p><h4 style={{ margin: 0, color: "#3b82f6", fontSize: "16px" }}>+₹{interestResult.dailyInterest.toFixed(2)}/day</h4></div>
+                <div><p style={{ margin: 0, fontSize: "12px", color: "#64748b" }}>Weekly Growth</p><h4 style={{ margin: 0, color: "#3b82f6", fontSize: "16px" }}>+₹{Math.round(interestResult.weeklyInterest)}/week</h4></div>
+              </div>
+
+              <button onClick={handleShare} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%", padding: "14px", background: "#10b981", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 10px rgba(16, 185, 129, 0.3)" }}>
+                <Share2 size={20} /> Share Result
+              </button>
             </div>
           )}
         </div>

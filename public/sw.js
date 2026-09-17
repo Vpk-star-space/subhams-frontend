@@ -15,22 +15,30 @@ self.addEventListener('fetch', (e) => {
 });
 
 // ==========================================
-// 🟢 NEW: PUSH NOTIFICATION LISTENERS
+// 🟢 PUSH NOTIFICATION (TRUECALLER STYLE)
 // ==========================================
 self.addEventListener('push', function(event) {
     const data = event.data ? event.data.json() : {};
     
     const title = data.title || "Subhams PMMS";
+    
     const options = {
         body: data.body || "New financial update available.",
         icon: "/logo192.png", 
         badge: "/logo192.png",
-        vibrate: [200, 100, 200], 
-        requireInteraction: false, 
+        vibrate: [300, 100, 300, 100, 300], // Aggressive vibration to catch attention
+        requireInteraction: true, // 🔥 TRUECALLER STYLE: Stays on screen until manually closed!
+        priority: "high", // Forces popup over other apps on Android
         data: {
             url: data.url || "/" 
         }
     };
+
+    // If the user enabled silent mode in their profile, mute it
+    if (data.silent) {
+        options.vibrate = [];
+        options.silent = true;
+    }
 
     event.waitUntil(self.registration.showNotification(title, options));
 });
