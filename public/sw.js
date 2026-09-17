@@ -2,11 +2,10 @@
 
 self.addEventListener('install', (e) => {
   console.log('[Service Worker] Installed properly');
-  self.skipWaiting(); // Forces Chrome to activate it immediately
+  self.skipWaiting(); 
 });
 
 self.addEventListener('fetch', (e) => {
-  // This satisfies Chrome's PWA requirement by actually handling the fetch
   e.respondWith(
     fetch(e.request).catch(() => {
       console.log('[Service Worker] Network request failed (Offline)');
@@ -15,7 +14,7 @@ self.addEventListener('fetch', (e) => {
 });
 
 // ==========================================
-// 🟢 PUSH NOTIFICATION (TRUECALLER STYLE)
+// 🟢 PUSH NOTIFICATION (TRUECALLER STYLE MOBILE FIX)
 // ==========================================
 self.addEventListener('push', function(event) {
     const data = event.data ? event.data.json() : {};
@@ -26,9 +25,12 @@ self.addEventListener('push', function(event) {
         body: data.body || "New financial update available.",
         icon: "/logo192.png", 
         badge: "/logo192.png",
-        vibrate: [300, 100, 300, 100, 300], // Aggressive vibration to catch attention
-        requireInteraction: true, // 🔥 TRUECALLER STYLE: Stays on screen until manually closed!
-        priority: "high", // Forces popup over other apps on Android
+        vibrate: [500, 250, 500, 250, 500, 250, 500], // 🔥 Aggressive long vibration to wake device
+        requireInteraction: true, 
+        priority: "high", 
+        // 🟢 THESE TWO LINES FORCE ANDROID TO POP IT ON SCREEN INSTEAD OF TRAY
+        tag: "pmms-alert-" + Date.now(), // Unique tag prevents grouping
+        renotify: true, // Forces Android to alert again even if a previous one exists
         data: {
             url: data.url || "/" 
         }
@@ -44,7 +46,7 @@ self.addEventListener('push', function(event) {
 });
 
 self.addEventListener('notificationclick', function(event) {
-    event.notification.close(); // Dismiss notification on click
+    event.notification.close(); 
 
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
