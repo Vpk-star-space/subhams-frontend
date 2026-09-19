@@ -9,7 +9,7 @@ import AdminCommandCenter from './components/AdminCommandCenter';
 
 const isMaintenanceMode = false; 
 const targetRestoreTime = "02-06-2026 at 10:00 AM"; 
-const API = process.env.REACT_APP_BACKEND_URL || "https://subhams-backend.onrender.com/api";
+const API = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000/api";
 const PUBLIC_VAPID_KEY = process.env.REACT_APP_VAPID_PUBLIC_KEY || "YOUR_PUBLIC_VAPID_KEY_HERE"; 
 
 const DEVICE_ERROR_MSG = "⚠️ Device Error: Your personal mobile or network is currently stuck or blocking the request. Please check your connection, clear cache, or restart the app.";
@@ -69,7 +69,6 @@ const globalStyles = `
     height: 45px;
     perspective: 1000px;
     z-index: 10;
-    /* OVERRIDDEN INLINE SO IT CAN BE CLICKED */
   }
   .coin-inner {
     width: 100%;
@@ -133,40 +132,47 @@ const globalStyles = `
     height: 100%;
     backface-visibility: hidden;
     border-radius: 50%;
+    background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%);
+    border: 6px solid #fef08a;
+    color: #fffbeb;
+  }
+  .loader-coin-back {
+    transform: rotateY(180deg);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%);
-    border: 6px solid #fef08a;
-    color: #fffbeb;
     text-shadow: 1px 2px 4px rgba(180, 83, 9, 0.8);
     text-align: center;
   }
-  .loader-coin-front {
-    font-size: 22px;
-    font-weight: 900;
-    line-height: 1.3;
-  }
-  .loader-coin-back {
-    transform: rotateY(180deg);
-    font-size: 55px;
-    font-weight: 900;
-    line-height: 1;
-  }
 `;
 
-// 🟢 REUSABLE GIANT COIN COMPONENT
+// 🟢 REUSABLE GIANT COIN COMPONENT - PERFECT SVG TEXT CURVING
 const GiantSpinningCoin = ({ frontTitle1, frontTitle2, frontSubtitle, backIcon, backSubtitle, iconColor = "#fffbeb" }) => (
     <div className="loader-coin-wrapper" style={{ marginBottom: "25px", marginTop: "10px" }}>
       <div className="loader-coin-inner">
         <div className="loader-coin-front">
-          {frontTitle1}<br/>{frontTitle2}<br/>
-          <span style={{ fontSize: '14px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px' }}>{frontSubtitle}</span>
+          <svg viewBox="0 0 180 180" style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+            <defs>
+              {/* Top Curve */}
+              <path id="topArc" d="M 30,90 A 60,60 0 0,1 150,90" />
+              {/* Bottom Curve (Left-to-Right sweep to keep text upright) */}
+              <path id="bottomArc" d="M 30,90 A 60,60 0 0,0 150,90" />
+            </defs>
+            <text fill="#fffbeb" fontSize="18" fontWeight="900" letterSpacing="2" style={{ filter: 'drop-shadow(1px 2px 4px rgba(180, 83, 9, 0.8))' }}>
+              <textPath href="#topArc" startOffset="50%" textAnchor="middle">{frontTitle1}</textPath>
+            </text>
+            <text x="90" y="100" fill="#fffbeb" fontSize="32" fontWeight="900" textAnchor="middle" style={{ filter: 'drop-shadow(1px 2px 4px rgba(180, 83, 9, 0.8))' }}>
+              {frontTitle2}
+            </text>
+            <text fill="#fffbeb" fontSize="16" fontWeight="bold" letterSpacing="2" style={{ filter: 'drop-shadow(1px 2px 4px rgba(180, 83, 9, 0.8))' }}>
+              <textPath href="#bottomArc" startOffset="50%" textAnchor="middle">{frontSubtitle}</textPath>
+            </text>
+          </svg>
         </div>
         <div className="loader-coin-back">
-          <span style={{ color: iconColor }}>{backIcon}</span><br/>
-          <span style={{ fontSize: '16px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px', display: 'block' }}>{backSubtitle}</span>
+          <span style={{ color: iconColor, fontSize: '55px', fontWeight: '900', lineHeight: 1 }}>{backIcon}</span><br/>
+          <span style={{ fontSize: '16px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '10px', display: 'block' }}>{backSubtitle}</span>
         </div>
       </div>
     </div>
@@ -185,7 +191,7 @@ const MaintenanceScreen = () => {
         <div style={{...smStyles.container, background: "rgba(15, 23, 42, 0.98)"}}>
             <style>{globalStyles}</style>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-                <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="Maintenance" backIcon="🔒" backSubtitle="Upgrading" />
+                <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="MAINTENANCE" backIcon="🔒" backSubtitle="Upgrading" />
                 <h1 style={{...smStyles.brandTitle, margin: "10px 0"}}>SYSTEM <span style={{color: '#f59e0b'}}>UPGRADE</span></h1>
                 <p style={smStyles.subtitle}>
                     <strong>Your financial dashboard is currently offline for a security upgrade.</strong><br/>
@@ -211,7 +217,7 @@ const ServerOfflineScreen = ({ onRetry }) => (
     <div style={{...smStyles.container, background: "rgba(15, 23, 42, 0.98)"}}>
         <style>{globalStyles}</style>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-            <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="Offline" backIcon="⚠️" backSubtitle="Server Lost" iconColor="#fca5a5" />
+            <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="OFFLINE" backIcon="⚠️" backSubtitle="Server Lost" iconColor="#fca5a5" />
             <h1 style={{ color: "white", marginBottom: "10px", fontSize: "28px", marginTop: "10px" }}>Connection <span style={{color: '#ef4444'}}>Lost</span></h1>
             <p style={{ color: "#94a3b8", marginBottom: "30px", fontSize: "15px", lineHeight: "1.6" }}>
                 <strong>We couldn&apos;t connect to the Subhams backend.</strong><br/><br/>
@@ -301,7 +307,9 @@ function App() {
   const [authMode, setAuthMode] = useState("login"); 
   const [sessionMsg, setSessionMsg] = useState(""); 
   
-  // 🟢 NEW STATE FOR THE EASTER EGG SECURITY COIN POPUP
+  // 🟢 STATE FOR THE BACKGROUND TOKEN TRACKER
+  const [expiryWarning, setExpiryWarning] = useState("");
+  
   const [showSecurityFeatures, setShowSecurityFeatures] = useState(false);
   
   const [isAppLocked, setIsAppLocked] = useState(!!localStorage.getItem("token") && localStorage.getItem("subhams_app_lock") === "true");
@@ -356,6 +364,43 @@ function App() {
 
   const formRef = useRef(null); 
   const [isAdminView, setIsAdminView] = useState(false);
+
+  // 🟢 SMART BACKGROUND TOKEN SCANNER (CHECKS EXPIRY WITHOUT CLICKS)
+  useEffect(() => {
+      if (!refreshToken || refreshToken === "null") return;
+
+      const checkTokenExpiry = () => {
+          try {
+              const payloadBase64 = refreshToken.split('.')[1];
+              const decodedJson = atob(payloadBase64);
+              const decoded = JSON.parse(decodedJson);
+              const expTime = decoded.exp * 1000;
+              const timeLeft = expTime - Date.now();
+
+              if (timeLeft <= 0) {
+                  // TOKEN DEAD: Instant Auto-Logout
+                  localStorage.removeItem("token");
+                  localStorage.removeItem("refreshToken");
+                  setToken(null);
+                  setRefreshToken(null);
+                  setAuthMode("login");
+                  setSessionMsg("👋 Welcome back! Your 30-day session has naturally expired. Please log in again to continue.");
+                  setExpiryWarning("");
+              } else if (timeLeft <= 60000) { 
+                  // TOKEN DYING: Show friendly warning banner when < 60 seconds left
+                  setExpiryWarning(`⏳  Reminder: Your 30-day session expires in ${Math.ceil(timeLeft/1000)} seconds. Please save any pending work; you will be redirected to log in.`);
+              } else {
+                  setExpiryWarning("");
+              }
+          } catch (e) {
+              console.log("Token check error");
+          }
+      };
+
+      checkTokenExpiry(); 
+      const interval = setInterval(checkTokenExpiry, 1000); 
+      return () => clearInterval(interval);
+  }, [refreshToken]);
 
   useEffect(() => {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
@@ -413,6 +458,12 @@ function App() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: refreshToken })
       });
+      
+      // 🟢 404 FAILSAFE - IF BACKEND ROUTE FAILS OR MISSING, AVOID ENDLESS LOOP
+      if (res.status === 404) {
+          throw new Error("Refresh endpoint not found");
+      }
+
       const data = await res.json();
       if (res.ok && data.accessToken) {
         localStorage.setItem("token", data.accessToken);
@@ -424,10 +475,17 @@ function App() {
         setToken(null);
         setRefreshToken(null);
         setAuthMode("login");
-        setSessionMsg("Subhams High Security Protocols Active: Your session was securely closed to protect your data. Please log in again.");
+        setSessionMsg("👋 Welcome back! Your 30-day session has naturally expired. Please log in again to continue.");
         return null; 
       }
     } catch (err) { 
+      // Failsafe catch for the 404
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      setToken(null);
+      setRefreshToken(null);
+      setAuthMode("login");
+      setSessionMsg("👋 Welcome back! Your 30-day session has naturally expired. Please log in again to continue.");
       return null; 
     }
   }, [refreshToken]);
@@ -1199,15 +1257,17 @@ function App() {
     }
   }
 
+  // 🟢 EARLY RENDER CHECKS
   if (isMaintenanceMode) return <MaintenanceScreen />;
   if (isAdminView) return <AdminCommandCenter token={token} onBack={() => setIsAdminView(false)} />;
   if (token && serverOffline) return <ServerOfflineScreen onRetry={() => { setIsAppLoading(true); setServerOffline(false); fetchAllData(); }} />;
 
+  // 🟢 FULL PAGE LOADER FOR INITIAL LOGIN / SERVER WAKE-UP
   if (isAppLoading && !token) return ( 
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", background: "rgba(15, 23, 42, 0.98)", padding: "20px" }}>
       <style>{globalStyles}</style>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-        <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="Loading" backIcon="₹" backSubtitle="Please Wait" />
+        <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="LOADING" backIcon="₹" backSubtitle="Please Wait" />
       </div>
     </div>
   );
@@ -1215,8 +1275,9 @@ function App() {
   if (token && isAppLocked) return ( <><style>{globalStyles}</style><AppLockScreen onUnlock={handleAppUnlock} /></> );
 
   if (!token) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", backgroundColor: "#f1f5f9", padding: "20px" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", backgroundColor: "#f1f5f9", padding: "20px", position: "relative" }}>
       <style>{globalStyles}</style>
+      
       {lockoutTimer > 0 && ( 
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(15, 23, 42, 0.98)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', textAlign: 'center' }}>
           <div style={{ background: "rgba(245, 158, 11, 0.1)", padding: "20px", borderRadius: "50%", marginBottom: "20px", border: "1px solid rgba(245, 158, 11, 0.2)" }}><Lock size={48} color="#f59e0b" /></div>
@@ -1226,14 +1287,18 @@ function App() {
           <button onClick={() => { setAuthMode("forgot"); setLockoutTimer(0); localStorage.removeItem('lockoutUntil'); }} style={{ padding: '14px 28px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', width: '100%', maxWidth: '300px', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>Unlock via Email</button>
         </div>
       )}
-      <div style={{ width: "100%", maxWidth: "400px", backgroundColor: "white", padding: "40px 25px", borderRadius: "16px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", textAlign: "center" }}>
+
+      <div style={{ width: "100%", maxWidth: "400px", backgroundColor: "white", padding: "40px 25px", borderRadius: "16px", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", textAlign: "center", position: "relative" }}>
+        
         <h1 className="brand-logo" style={{ marginBottom: "5px", fontSize: "2.5rem" }}>SUBHAMS</h1>
+        
         {authMode === "login" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             
+            {/* 🟢 SILENT SECURITY LOGOUT NOTIFICATION */}
             {sessionMsg && (
                 <div style={{ padding: "12px", background: "#eff6ff", color: "#1e40af", border: "1px solid #93c5fd", borderRadius: "8px", fontSize: "13px", fontWeight: "bold", textAlign: "center", lineHeight: "1.4" }}>
-                    🛡️ {sessionMsg}
+                    {sessionMsg}
                 </div>
             )}
 
@@ -1293,32 +1358,33 @@ function App() {
     <div>
       <style>{globalStyles}</style>
 
-      {/* 🟢 NEW EASTER EGG SECURITY PANEL */}
-      {showSecurityFeatures && (
-          <div style={{ position: "fixed", top: "0", left: "0", width: "100vw", height: "100vh", background: "rgba(15, 23, 42, 0.95)", backdropFilter: "blur(10px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 99999, padding: "20px" }}>
-              
-              <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="NETWORKS" frontSubtitle="Security" backIcon="🛡️" backSubtitle="Protected" iconColor="#10b981" />
-              
-              <div style={{ background: "white", padding: "30px", borderRadius: "16px", width: "100%", maxWidth: "400px", boxShadow: "0 0 30px rgba(59, 130, 246, 0.3)", position: "relative", textAlign: "center", animation: "fade-in 0.5s ease-out" }}>
-                  <h2 style={{ margin: "0 0 20px 0", color: "#0f172a", fontSize: "20px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                      🛡️ Subhams High Security Protocols
-                  </h2>
-                  <div style={{ textAlign: "left", color: "#475569", fontSize: "15px", lineHeight: "1.8", marginBottom: "25px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}><Check size={18} color="#10b981" /> Biometric Device Locking</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}><Check size={18} color="#10b981" /> Cryptographically Secure Data</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}><Check size={18} color="#10b981" /> Smart Analytics & Insights</div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}><Check size={18} color="#10b981" /> Real-time Sync via Subhams Networks</div>
-                  </div>
-                  <button onClick={() => setShowSecurityFeatures(false)} style={{ width: "100%", padding: "14px", background: "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 10px rgba(59, 130, 246, 0.3)" }}>
-                      Close Security Panel
-                  </button>
-              </div>
+      {/* 🟢 NEW BACKGROUND EXPIRY WARNING BANNER */}
+      {expiryWarning && (
+          <div style={{ position: "fixed", top: "0", left: "0", width: "100%", background: "#ef4444", color: "white", textAlign: "center", padding: "10px", fontSize: "14px", fontWeight: "bold", zIndex: 99999, boxShadow: "0 4px 10px rgba(0,0,0,0.2)", animation: "fade-in 0.3s" }}>
+              {expiryWarning}
           </div>
       )}
 
-      {isAppLoading && token && (
-          <div style={{ position: "fixed", top: "0", left: "0", width: "100vw", height: "100vh", background: "rgba(15, 23, 42, 0.98)", backdropFilter: "blur(10px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
-            <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="Loading" backIcon="₹" backSubtitle="Please Wait" />
+      {/* 🟢 EASTER EGG SECURITY PANEL */}
+      {showSecurityFeatures && (
+          <div style={{ position: "fixed", top: "0", left: "0", width: "100vw", height: "100vh", background: "rgba(15, 23, 42, 0.95)", backdropFilter: "blur(10px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 99999, padding: "20px" }}>
+              
+              <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="NETWORKS" backIcon="🛡️" backSubtitle="Protected" iconColor="#10b981" />
+              
+              <div style={{ background: "white", padding: "25px", borderRadius: "16px", width: "100%", maxWidth: "380px", boxShadow: "0 0 30px rgba(59, 130, 246, 0.3)", position: "relative", textAlign: "center", animation: "fade-in 0.5s ease-out" }}>
+                  <h2 style={{ margin: "0 0 20px 0", color: "#0f172a", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                      🛡️ Subhams Security Protocols
+                  </h2>
+                  <div style={{ textAlign: "left", color: "#475569", fontSize: "14px", lineHeight: "1.8", marginBottom: "25px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}><Check size={16} color="#10b981" /> Biometric Device Locking</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}><Check size={16} color="#10b981" /> Cryptographically Secure Data</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}><Check size={16} color="#10b981" /> Smart Analytics & Insights</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}><Check size={16} color="#10b981" /> Real-time Sync via Subhams Networks</div>
+                  </div>
+                  <button onClick={() => setShowSecurityFeatures(false)} style={{ width: "100%", padding: "14px", background: "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontSize: "15px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 10px rgba(59, 130, 246, 0.3)" }}>
+                      Close Security Panel
+                  </button>
+              </div>
           </div>
       )}
 
@@ -1456,7 +1522,7 @@ function App() {
           <div className="metric-card"><div className="metric-title">PENDING <br/>పెండింగ్</div><div className="metric-value" style={{ color: "#f59e0b" }}>₹{pending}</div></div>
           <div className="metric-card" style={{ backgroundColor: balance >= 0 ? "#f0fdf4" : "#fef2f2" }}><div className="metric-title">BALANCE <br/>నిల్వ</div><div className="metric-value" style={{ color: balance >= 0 ? "#3b82f6" : "#ef4444" }}>₹{balance}</div></div>
           
-          {/* 🟢 3D CENTER SPINNING COIN IN DASHBOARD - NOW CLICKABLE FOR EASTER EGG */}
+          {/* 🟢 3D CENTER SPINNING COIN IN DASHBOARD */}
           <div className="coin-wrapper" style={{ cursor: "pointer", pointerEvents: "auto" }} onClick={() => setShowSecurityFeatures(true)}>
             <div className="coin-inner">
               <div className="coin-front">₹</div>
