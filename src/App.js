@@ -8,11 +8,27 @@ import InstallPopup from './components/InstallPopup';
 import AdminCommandCenter from './components/AdminCommandCenter';
 
 const isMaintenanceMode = false; 
-const targetRestoreTime = "18-09-2026 at 10:00 AM"; 
+const targetRestoreTime = "02-06-2026 at 10:00 AM"; 
 const API = process.env.REACT_APP_BACKEND_URL || "https://subhams-backend.onrender.com/api";
 const PUBLIC_VAPID_KEY = process.env.REACT_APP_VAPID_PUBLIC_KEY || "YOUR_PUBLIC_VAPID_KEY_HERE"; 
 
 const DEVICE_ERROR_MSG = "⚠️ Device Error: Your personal mobile or network is currently stuck or blocking the request. Please check your connection, clear cache, or restart the app.";
+
+// 🟢 MOVED STYLES TO TOP TO PREVENT VERCEL BUILD CRASHES
+const smStyles = {
+    container: { minHeight: '100vh', width: '100%', backgroundColor: '#020617', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif" },
+    card: { display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', backgroundColor: '#0f172a', borderRadius: '16px', padding: '40px', maxWidth: '550px', width: '100%', boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.7)', border: '1px solid #1e293b' },
+    brandTitle: { margin: '0 0 15px 0', fontSize: '38px', color: '#ffffff', fontWeight: '900', letterSpacing: '-1px' },
+    secureBadge: { display: 'inline-block', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '6px 14px', borderRadius: '50px', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', border: '1px solid rgba(16, 185, 129, 0.3)', marginBottom: '25px' },
+    subtitle: { color: '#cbd5e1', fontSize: '16px', lineHeight: '1.6', margin: '0 0 30px 0' },
+    timePanelContainer: { display: 'flex', flexWrap: 'wrap', width: '100%', gap: '15px', marginBottom: '30px' },
+    liveTimeBox: { flex: 1, minWidth: '150px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '15px', borderTop: '4px solid #f59e0b' },
+    restorePanel: { flex: 1, minWidth: '150px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '15px', borderTop: '4px solid #10b981' },
+    timeLabel: { color: '#94a3b8', fontSize: '11px', fontWeight: '700', letterSpacing: '1px', marginBottom: '8px' },
+    liveTimeValue: { color: '#f59e0b', fontSize: '20px', fontWeight: '900', letterSpacing: '1px' },
+    restoreTime: { color: '#10b981', fontSize: '20px', fontWeight: '900', letterSpacing: '0.5px' },
+    footerText: { color: '#94a3b8', fontSize: '14px', lineHeight: '1.6', margin: '0' }
+};
 
 const formatDate = (dateString) => {
   if (!dateString) return "";
@@ -57,6 +73,42 @@ const urlBase64ToUint8Array = (base64String) => {
     outputArray[i] = rawData.charCodeAt(i);
   }
   return outputArray;
+};
+
+const MaintenanceScreen = () => {
+    const [currentTime, setCurrentTime] = useState(new Date());
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+    const liveTimeString = currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+
+    return (
+        <div style={smStyles.container}>
+            <div style={smStyles.card}>
+                <h1 style={smStyles.brandTitle}>SUBHAMS <span style={{color: '#f59e0b'}}>PMMS</span></h1>
+                <div style={smStyles.secureBadge}>🔒 SECURE MAINTENANCE / సురక్షిత నిర్వహణ</div>
+                <p style={smStyles.subtitle}>
+                    <strong>Your financial dashboard is currently offline for a security upgrade.</strong><br/>
+                    <span style={{color: '#94a3b8', fontSize: '15px'}}>మీ ఫైనాన్షియల్ డ్యాష్‌బోర్డ్ భద్రతా అప్‌గ్రేడ్ కోసం ప్రస్తుతం ఆఫ్‌లైన్‌లో ఉంది.</span>
+                </p>
+                <div style={smStyles.timePanelContainer}>
+                    <div style={smStyles.liveTimeBox}>
+                        <div style={smStyles.timeLabel}>PRESENT TIME / ప్రస్తుత సమయం</div>
+                        <div style={smStyles.liveTimeValue}>{liveTimeString}</div>
+                    </div>
+                    <div style={smStyles.restorePanel}>
+                        <div style={smStyles.timeLabel}>TARGET RESTORE TIME / లక్ష్యం</div>
+                        <div style={smStyles.restoreTime}>{targetRestoreTime}</div>
+                    </div>
+                </div>
+                <p style={smStyles.footerText}>
+                    Thank you for your patience. <span style={{fontSize: '13px'}}>(మీ ఓపికకు ధన్యవాదాలు)</span><br/><br/>
+                    <strong>- Venkata Pavan Kumar Amarthaluri</strong>
+                </p>
+            </div>
+        </div>
+    );
 };
 
 const AppLockScreen = ({ onUnlock }) => (
@@ -541,7 +593,6 @@ function App() {
         fetch(`${API}/auth/me`, { headers }) 
       ]);
 
-      // 🟢 Catch Suspended/Down Servers (Render throws 502 or 503)
       if (!tRes.ok && tRes.status >= 500) {
           setServerOffline(true);
           setIsAppLoading(false);
@@ -588,10 +639,10 @@ function App() {
         setMonthlyChartData(formattedChartData);
       }
       setInsights(iData);
-      setServerOffline(false); // Successfully loaded
+      setServerOffline(false); 
     } catch (err) { 
         console.log("Background fetch silent fail", err); 
-        setServerOffline(true); // 🟢 Triggers the Offline Screen if fetch fails entirely
+        setServerOffline(true); 
     } 
     finally { 
         setIsAppLoading(false); 
@@ -1114,7 +1165,7 @@ function App() {
           <div style={{ background: "rgba(245, 158, 11, 0.1)", padding: "20px", borderRadius: "50%", marginBottom: "20px", border: "1px solid rgba(245, 158, 11, 0.2)" }}><Lock size={48} color="#f59e0b" /></div>
           <h1 style={{ fontSize: 'clamp(1.5rem, 6vw, 2.5rem)', color: 'white', marginBottom: '10px' }}>Security Checkpoint</h1>
           <div style={{ fontSize: '24px', color: '#fbbf24', fontWeight: 'bold', margin: '10px 0' }}>Access restored in: {Math.floor(lockoutTimer / 60)}m {lockoutTimer % 60}s</div>
-          <p style={{ margin: '20px 0', textAlign: 'center', maxWidth: '320px', color: '#cbd5e1', lineHeight: '1.5' }}>We've temporarily limited access after multiple failed attempts. <br/><br/><strong>If this was you, please verify your identity to regain access immediately.</strong></p>
+          <p style={{ margin: '20px 0', textAlign: 'center', maxWidth: '320px', color: '#cbd5e1', lineHeight: '1.5' }}>We&apos;ve temporarily limited access after multiple failed attempts. <br/><br/><strong>If this was you, please verify your identity to regain access immediately.</strong></p>
           <button onClick={() => { setAuthMode("forgot"); setLockoutTimer(0); localStorage.removeItem('lockoutUntil'); }} style={{ padding: '14px 28px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', width: '100%', maxWidth: '300px', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>Unlock via Email</button>
         </div>
       )}
@@ -1126,7 +1177,7 @@ function App() {
             <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} disabled={lockoutTimer > 0} />
             <p style={{ margin: "0", textAlign: "right", fontSize: "13px", color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("forgot")}>Forgot Password?</p>
             <button style={{ padding: "15px", background: lockoutTimer > 0 ? "#94a3b8" : "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }} onClick={login} disabled={lockoutTimer > 0}>Login</button>
-            <p style={{ fontSize: "14px", margin: "5px 0" }}>Don't have an account? <span style={{ color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("register")}>Create one here</span></p>
+            <p style={{ fontSize: "14px", margin: "5px 0" }}>Don&apos;t have an account? <span style={{ color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("register")}>Create one here</span></p>
             <div style={{ margin: "10px 0", color: "#cbd5e1", fontSize: "14px" }}>────── OR ──────</div>
             <div style={{ display: "flex", justifyContent: "center" }}><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => alert(DEVICE_ERROR_MSG)} /></div>
           </div>
@@ -1533,20 +1584,5 @@ function App() {
     </div>
   );
 }
-
-const smStyles = {
-    container: { minHeight: '100vh', width: '100%', backgroundColor: '#020617', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif" },
-    card: { display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', backgroundColor: '#0f172a', borderRadius: '16px', padding: '40px', maxWidth: '550px', width: '100%', boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.7)', border: '1px solid #1e293b' },
-    brandTitle: { margin: '0 0 15px 0', fontSize: '38px', color: '#ffffff', fontWeight: '900', letterSpacing: '-1px' },
-    secureBadge: { display: 'inline-block', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '6px 14px', borderRadius: '50px', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', border: '1px solid rgba(16, 185, 129, 0.3)', marginBottom: '25px' },
-    subtitle: { color: '#cbd5e1', fontSize: '16px', lineHeight: '1.6', margin: '0 0 30px 0' },
-    timePanelContainer: { display: 'flex', flexDirection: window.innerWidth < 500 ? 'column' : 'row', width: '100%', gap: '15px', marginBottom: '30px' },
-    liveTimeBox: { flex: 1, backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '15px', borderTop: '4px solid #f59e0b' },
-    restorePanel: { flex: 1, backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '15px', borderTop: '4px solid #10b981' },
-    timeLabel: { color: '#94a3b8', fontSize: '11px', fontWeight: '700', letterSpacing: '1px', marginBottom: '8px' },
-    liveTimeValue: { color: '#f59e0b', fontSize: '20px', fontWeight: '900', letterSpacing: '1px' },
-    restoreTime: { color: '#10b981', fontSize: '20px', fontWeight: '900', letterSpacing: '0.5px' },
-    footerText: { color: '#94a3b8', fontSize: '14px', lineHeight: '1.6', margin: '0' }
-};
 
 export default App;
