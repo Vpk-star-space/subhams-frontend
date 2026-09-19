@@ -14,7 +14,7 @@ const PUBLIC_VAPID_KEY = process.env.REACT_APP_VAPID_PUBLIC_KEY || "YOUR_PUBLIC_
 
 const DEVICE_ERROR_MSG = "⚠️ Device Error: Your personal mobile or network is currently stuck or blocking the request. Please check your connection, clear cache, or restart the app.";
 
-// 🟢 MOVED ALL STYLES TO THE VERY TOP TO PREVENT VERCEL BUILD CRASHES
+// 🟢 STYLES AND COMPONENTS DECLARED AT THE TOP TO FIX VERCEL BUILD
 const smStyles = {
     container: { minHeight: '100vh', width: '100%', backgroundColor: '#020617', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif" },
     card: { display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', backgroundColor: '#0f172a', borderRadius: '16px', padding: '40px', maxWidth: '550px', width: '100%', boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.7)', border: '1px solid #1e293b' },
@@ -22,8 +22,8 @@ const smStyles = {
     secureBadge: { display: 'inline-block', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '6px 14px', borderRadius: '50px', fontSize: '12px', fontWeight: '700', letterSpacing: '1px', border: '1px solid rgba(16, 185, 129, 0.3)', marginBottom: '25px' },
     subtitle: { color: '#cbd5e1', fontSize: '16px', lineHeight: '1.6', margin: '0 0 30px 0' },
     timePanelContainer: { display: 'flex', flexWrap: 'wrap', width: '100%', gap: '15px', marginBottom: '30px' },
-    liveTimeBox: { flex: 1, minWidth: '150px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '15px', borderTop: '4px solid #f59e0b' },
-    restorePanel: { flex: 1, minWidth: '150px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '15px', borderTop: '4px solid #10b981' },
+    liveTimeBox: { flex: 1, minWidth: '140px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '15px', borderTop: '4px solid #f59e0b' },
+    restorePanel: { flex: 1, minWidth: '140px', backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '15px', borderTop: '4px solid #10b981' },
     timeLabel: { color: '#94a3b8', fontSize: '11px', fontWeight: '700', letterSpacing: '1px', marginBottom: '8px' },
     liveTimeValue: { color: '#f59e0b', fontSize: '20px', fontWeight: '900', letterSpacing: '1px' },
     restoreTime: { color: '#10b981', fontSize: '20px', fontWeight: '900', letterSpacing: '0.5px' },
@@ -55,7 +55,7 @@ const globalStyles = `
   .insight-blue { background: #eff6ff; border-left: 5px solid #3b82f6; color: #1e40af; padding: 15px; border-radius: 8px;}
   @keyframes fade-in { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
   
-  /* 🟢 3D CENTER COIN CSS (DASHBOARD) */
+  /* 🟢 3D CENTER COIN CSS (DASHBOARD) - 8S ROTATION */
   @keyframes flip-coin-3d {
     0% { transform: rotateY(0deg); }
     100% { transform: rotateY(360deg); }
@@ -107,7 +107,7 @@ const globalStyles = `
     padding: 2px;
   }
 
-  /* 🟢 3D GIANT COIN CSS (LOADING, OFFLINE, MAINTENANCE) */
+  /* 🟢 3D GIANT COIN CSS (LOADING, OFFLINE, MAINTENANCE) - 6S ROTATION */
   @keyframes flip-coin-3d-giant {
     0% { transform: rotateY(0deg); }
     100% { transform: rotateY(360deg); }
@@ -156,7 +156,7 @@ const globalStyles = `
   }
 `;
 
-// 🟢 NEW REUSABLE COMPONENT FOR THE GIANT COIN TEXT
+// 🟢 REUSABLE GIANT COIN COMPONENT
 const GiantSpinningCoin = ({ frontTitle1, frontTitle2, frontSubtitle, backIcon, backSubtitle, iconColor = "#fffbeb" }) => (
     <div className="loader-coin-wrapper" style={{ marginBottom: "25px", marginTop: "10px" }}>
       <div className="loader-coin-inner">
@@ -170,6 +170,83 @@ const GiantSpinningCoin = ({ frontTitle1, frontTitle2, frontSubtitle, backIcon, 
         </div>
       </div>
     </div>
+);
+
+// 🟢 MAINTENANCE SCREEN COMPONENT
+const MaintenanceScreen = () => {
+    const [currentTime, setCurrentTime] = useState(new Date());
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+    const liveTimeString = currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+
+    return (
+        <div style={{...smStyles.container, background: "rgba(15, 23, 42, 0.98)"}}>
+            <style>{globalStyles}</style>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+                <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="Maintenance" backIcon="🔒" backSubtitle="Upgrading" />
+                <h1 style={{...smStyles.brandTitle, margin: "10px 0"}}>SYSTEM <span style={{color: '#f59e0b'}}>UPGRADE</span></h1>
+                <p style={smStyles.subtitle}>
+                    <strong>Your financial dashboard is currently offline for a security upgrade.</strong><br/>
+                    <span style={{color: '#94a3b8', fontSize: '15px'}}>మీ ఫైనాన్షియల్ డ్యాష్‌బోర్డ్ భద్రతా అప్‌గ్రేడ్ కోసం ప్రస్తుతం ఆఫ్‌లైన్‌లో ఉంది.</span>
+                </p>
+                <div style={smStyles.timePanelContainer}>
+                    <div style={smStyles.liveTimeBox}>
+                        <div style={smStyles.timeLabel}>PRESENT TIME</div>
+                        <div style={smStyles.liveTimeValue}>{liveTimeString}</div>
+                    </div>
+                    <div style={smStyles.restorePanel}>
+                        <div style={smStyles.timeLabel}>TARGET RESTORE</div>
+                        <div style={smStyles.restoreTime}>{targetRestoreTime}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// 🟢 SERVER OFFLINE COMPONENT
+const ServerOfflineScreen = ({ onRetry }) => (
+    <div style={{...smStyles.container, background: "rgba(15, 23, 42, 0.98)"}}>
+        <style>{globalStyles}</style>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+            <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="Offline" backIcon="⚠️" backSubtitle="Server Lost" iconColor="#fca5a5" />
+            <h1 style={{ color: "white", marginBottom: "10px", fontSize: "28px", marginTop: "10px" }}>Connection <span style={{color: '#ef4444'}}>Lost</span></h1>
+            <p style={{ color: "#94a3b8", marginBottom: "30px", fontSize: "15px", lineHeight: "1.6" }}>
+                <strong>We couldn&apos;t connect to the Subhams backend.</strong><br/><br/>
+                The server might be down for maintenance, suspended, or your network connection is unstable.<br/>
+                <span style={{color: '#cbd5e1', fontSize: '13px', display: 'block', marginTop: '10px'}}>సర్వర్ కనెక్ట్ కాలేదు. దయచేసి మళ్ళీ ప్రయత్నించండి.</span>
+            </p>
+            <button
+                onClick={onRetry}
+                style={{ padding: "14px 28px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", boxShadow: "0 4px 15px rgba(239, 68, 68, 0.4)", margin: "0 auto" }}
+            >
+                <Power size={20} /> Retry Connection
+            </button>
+        </div>
+    </div>
+);
+
+// 🟢 APP LOCK COMPONENT
+const AppLockScreen = ({ onUnlock }) => (
+  <div style={smStyles.container}>
+    <div style={smStyles.card}>
+      <div style={{ background: "rgba(16, 185, 129, 0.1)", padding: "20px", borderRadius: "50%", marginBottom: "20px" }}>
+        <Lock size={60} color="#10b981" />
+      </div>
+      <h1 style={{ color: "white", marginBottom: "10px", fontSize: "32px" }}>App Locked</h1>
+      <p style={{ color: "#94a3b8", marginBottom: "30px", fontSize: "16px" }}>
+        Your financial data is protected. Please verify your identity to access Subhams PMMS.
+      </p>
+      <button 
+        onClick={onUnlock} 
+        style={{ padding: "16px 32px", background: "#10b981", color: "white", border: "none", borderRadius: "8px", fontSize: "18px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", boxShadow: "0 4px 15px rgba(16, 185, 129, 0.4)", margin: "0 auto" }}
+      >
+         <Fingerprint size={24} /> Unlock Dashboard
+      </button>
+    </div>
+  </div>
 );
 
 const formatDate = (dateString) => {
@@ -217,82 +294,7 @@ const urlBase64ToUint8Array = (base64String) => {
   return outputArray;
 };
 
-// 🟢 1. MAINTENANCE SCREEN WITH GIANT COIN
-const MaintenanceScreen = () => {
-    const [currentTime, setCurrentTime] = useState(new Date());
-    useEffect(() => {
-        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-        return () => clearInterval(timer);
-    }, []);
-    const liveTimeString = currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-
-    return (
-        <div style={{...smStyles.container, background: "rgba(15, 23, 42, 0.98)"}}>
-            <style>{globalStyles}</style>
-            <div style={smStyles.card}>
-                <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="Maintenance" backIcon="🔒" backSubtitle="Upgrading" />
-                <h1 style={smStyles.brandTitle}>SYSTEM <span style={{color: '#f59e0b'}}>UPGRADE</span></h1>
-                <p style={smStyles.subtitle}>
-                    <strong>Your financial dashboard is currently offline for a security upgrade.</strong><br/>
-                    <span style={{color: '#94a3b8', fontSize: '15px'}}>మీ ఫైనాన్షియల్ డ్యాష్‌బోర్డ్ భద్రతా అప్‌గ్రేడ్ కోసం ప్రస్తుతం ఆఫ్‌లైన్‌లో ఉంది.</span>
-                </p>
-                <div style={smStyles.timePanelContainer}>
-                    <div style={smStyles.liveTimeBox}>
-                        <div style={smStyles.timeLabel}>PRESENT TIME</div>
-                        <div style={smStyles.liveTimeValue}>{liveTimeString}</div>
-                    </div>
-                    <div style={smStyles.restorePanel}>
-                        <div style={smStyles.timeLabel}>TARGET RESTORE</div>
-                        <div style={smStyles.restoreTime}>{targetRestoreTime}</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// 🟢 2. SERVER OFFLINE SCREEN WITH GIANT COIN
-const ServerOfflineScreen = ({ onRetry }) => (
-    <div style={{...smStyles.container, background: "rgba(15, 23, 42, 0.98)"}}>
-        <style>{globalStyles}</style>
-        <div style={smStyles.card}>
-            <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="Offline" backIcon="⚠️" backSubtitle="Server Lost" iconColor="#fca5a5" />
-            <h1 style={{ color: "white", marginBottom: "10px", fontSize: "28px", marginTop: 0 }}>Connection <span style={{color: '#ef4444'}}>Lost</span></h1>
-            <p style={{ color: "#94a3b8", marginBottom: "30px", fontSize: "15px", lineHeight: "1.6" }}>
-                <strong>We couldn&apos;t connect to the Subhams backend.</strong><br/><br/>
-                The server might be down for maintenance, suspended, or your network connection is unstable.<br/>
-                <span style={{color: '#cbd5e1', fontSize: '13px', display: 'block', marginTop: '10px'}}>సర్వర్ కనెక్ట్ కాలేదు. దయచేసి మళ్ళీ ప్రయత్నించండి.</span>
-            </p>
-            <button
-                onClick={onRetry}
-                style={{ padding: "14px 28px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", boxShadow: "0 4px 15px rgba(239, 68, 68, 0.4)", margin: "0 auto" }}
-            >
-                <Power size={20} /> Retry Connection
-            </button>
-        </div>
-    </div>
-);
-
-const AppLockScreen = ({ onUnlock }) => (
-  <div style={smStyles.container}>
-    <div style={smStyles.card}>
-      <div style={{ background: "rgba(16, 185, 129, 0.1)", padding: "20px", borderRadius: "50%", marginBottom: "20px" }}>
-        <Lock size={60} color="#10b981" />
-      </div>
-      <h1 style={{ color: "white", marginBottom: "10px", fontSize: "32px" }}>App Locked</h1>
-      <p style={{ color: "#94a3b8", marginBottom: "30px", fontSize: "16px" }}>
-        Your financial data is protected. Please verify your identity to access Subhams PMMS.
-      </p>
-      <button 
-        onClick={onUnlock} 
-        style={{ padding: "16px 32px", background: "#10b981", color: "white", border: "none", borderRadius: "8px", fontSize: "18px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", boxShadow: "0 4px 15px rgba(16, 185, 129, 0.4)", margin: "0 auto" }}
-      >
-         <Fingerprint size={24} /> Unlock Dashboard
-      </button>
-    </div>
-  </div>
-);
-
+// 🟢 MAIN APP ENTRY
 function App() {
   const [isAppLoading, setIsAppLoading] = useState(!!localStorage.getItem("token")); 
   const [serverOffline, setServerOffline] = useState(false);
@@ -480,6 +482,7 @@ function App() {
 
       const contentType = res.headers.get("content-type");
       if (res.status === 429 && (!contentType || !contentType.includes("json"))) {
+         setIsAppLoading(false);
          return alert(DEVICE_ERROR_MSG);
       }
       
@@ -506,6 +509,7 @@ function App() {
         if (localStorage.getItem("subhams_app_lock") === "true") setIsAppLocked(true);
 
       } else { 
+        setIsAppLoading(false);
         if (res.status === 429 && data.error && data.error.includes("Account locked")) {
           triggerLockout();
           return;
@@ -523,9 +527,7 @@ function App() {
         }
       }
     } catch (err) { 
-      alert(DEVICE_ERROR_MSG); 
-    } finally { 
-      setIsAppLoading(false); 
+      setServerOffline(true);
     }
   };
 
@@ -552,9 +554,13 @@ function App() {
         setToken(data.accessToken); setRefreshToken(data.refreshToken);
         
         if (localStorage.getItem("subhams_app_lock") === "true") setIsAppLocked(true);
-      } else { alert(DEVICE_ERROR_MSG); }
-    } catch (err) { alert(DEVICE_ERROR_MSG); }
-    finally { setIsAppLoading(false); }
+      } else { 
+        setIsAppLoading(false);
+        alert(DEVICE_ERROR_MSG); 
+      }
+    } catch (err) { 
+      setServerOffline(true);
+    }
   };
 
   const requestRegister = async () => {
@@ -563,8 +569,9 @@ function App() {
     try {
       const res = await fetch(`${API}/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, username, password }) });
       const data = await res.json();
+      setIsAppLoading(false);
       if (res.ok) { alert("OTP sent to your email!"); setAuthMode("otp"); } else { alert(data.error || "Registration failed"); }
-    } catch (err) { alert(DEVICE_ERROR_MSG); } finally { setIsAppLoading(false); }
+    } catch (err) { setServerOffline(true); }
   };
 
   const verifyOtpAndRegister = async () => {
@@ -573,8 +580,9 @@ function App() {
     try {
       const res = await fetch(`${API}/auth/verify-otp`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, username, password, otp }) });
       const data = await res.json();
+      setIsAppLoading(false);
       if (res.ok) { alert("Success! You can now log in."); setAuthMode("login"); setPassword(""); setOtp(""); } else { alert(data.error || "Invalid OTP"); }
-    } catch (err) { alert(DEVICE_ERROR_MSG); } finally { setIsAppLoading(false); }
+    } catch (err) { setServerOffline(true); }
   };
 
   const handleForgotPassword = async () => {
@@ -583,8 +591,9 @@ function App() {
     try {
       const res = await fetch(`${API}/auth/forgot-password`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
       const data = await res.json();
+      setIsAppLoading(false);
       if (res.ok) { alert("OTP sent! Check your email."); setAuthMode("reset_otp"); } else { alert(data.error || "Failed to send OTP."); }
-    } catch (err) { alert(DEVICE_ERROR_MSG); } finally { setIsAppLoading(false); }
+    } catch (err) { setServerOffline(true); }
   };
 
   const handleResetPassword = async () => {
@@ -593,12 +602,13 @@ function App() {
     try {
       const res = await fetch(`${API}/auth/reset-password`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, otp, newPassword }) });
       const data = await res.json();
+      setIsAppLoading(false);
       if (res.ok) {
         alert("Password reset successful! Please log in."); 
         setAuthMode("login"); setOtp(""); setNewPassword(""); setPassword(""); 
         setLockoutTimer(0); localStorage.removeItem('lockoutUntil'); setFailedAttempts(0); localStorage.removeItem('localFailedAttempts');
       } else { alert(data.error || data.message || "Invalid OTP."); }
-    } catch (err) { alert(DEVICE_ERROR_MSG); } finally { setIsAppLoading(false); }
+    } catch (err) { setServerOffline(true); }
   };
 
   const logout = () => { 
@@ -610,6 +620,7 @@ function App() {
     setPushEnabled(false);
     setAuthMode("login");
     setShowProfileModal(false);
+    setServerOffline(false);
   };
 
   const updateProfileName = async () => {
@@ -745,6 +756,7 @@ function App() {
   const fetchAllData = useCallback(async () => {
     if (!token || token === "null" || isMaintenanceMode || isAppLocked) { setIsAppLoading(false); return; }
     
+    setIsAppLoading(true);
     try {
       const headers = { Authorization: `Bearer ${token}` };
       
