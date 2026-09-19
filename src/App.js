@@ -59,42 +59,6 @@ const urlBase64ToUint8Array = (base64String) => {
   return outputArray;
 };
 
-const MaintenanceScreen = () => {
-    const [currentTime, setCurrentTime] = useState(new Date());
-    useEffect(() => {
-        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-        return () => clearInterval(timer);
-    }, []);
-    const liveTimeString = currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-
-    return (
-        <div style={smStyles.container}>
-            <div style={smStyles.card}>
-                <h1 style={smStyles.brandTitle}>SUBHAMS <span style={{color: '#f59e0b'}}>PMMS</span></h1>
-                <div style={smStyles.secureBadge}>🔒 SECURE MAINTENANCE / సురక్షిత నిర్వహణ</div>
-                <p style={smStyles.subtitle}>
-                    <strong>Your financial dashboard is currently offline for a security upgrade.</strong><br/>
-                    <span style={{color: '#94a3b8', fontSize: '15px'}}>మీ ఫైనాన్షియల్ డ్యాష్‌బోర్డ్ భద్రతా అప్‌గ్రేడ్ కోసం ప్రస్తుతం ఆఫ్‌లైన్‌లో ఉంది.</span>
-                </p>
-                <div style={smStyles.timePanelContainer}>
-                    <div style={smStyles.liveTimeBox}>
-                        <div style={smStyles.timeLabel}>PRESENT TIME / ప్రస్తుత సమయం</div>
-                        <div style={smStyles.liveTimeValue}>{liveTimeString}</div>
-                    </div>
-                    <div style={smStyles.restorePanel}>
-                        <div style={smStyles.timeLabel}>TARGET RESTORE TIME / లక్ష్యం</div>
-                        <div style={smStyles.restoreTime}>{targetRestoreTime}</div>
-                    </div>
-                </div>
-                <p style={smStyles.footerText}>
-                    Thank you for your patience. <span style={{fontSize: '13px'}}>(మీ ఓపికకు ధన్యవాదాలు)</span><br/><br/>
-                    <strong>- Venkata Pavan Kumar Amarthaluri</strong>
-                </p>
-            </div>
-        </div>
-    );
-};
-
 const AppLockScreen = ({ onUnlock }) => (
   <div style={smStyles.container}>
     <div style={smStyles.card}>
@@ -117,6 +81,7 @@ const AppLockScreen = ({ onUnlock }) => (
 
 function App() {
   const [isAppLoading, setIsAppLoading] = useState(!!localStorage.getItem("token")); 
+  const [serverOffline, setServerOffline] = useState(false);
   const [authMode, setAuthMode] = useState("login"); 
   
   const [isAppLocked, setIsAppLocked] = useState(!!localStorage.getItem("token") && localStorage.getItem("subhams_app_lock") === "true");
@@ -576,9 +541,17 @@ function App() {
         fetch(`${API}/auth/me`, { headers }) 
       ]);
 
+      // 🟢 Catch Suspended/Down Servers (Render throws 502 or 503)
+      if (!tRes.ok && tRes.status >= 500) {
+          setServerOffline(true);
+          setIsAppLoading(false);
+          return;
+      }
+
       if (tRes.status === 401 || tRes.status === 403) { 
         const newToken = await refreshAuthToken();
         if (newToken) fetchAllData(); 
+        else setIsAppLoading(false);
         return; 
       }
 
@@ -615,7 +588,11 @@ function App() {
         setMonthlyChartData(formattedChartData);
       }
       setInsights(iData);
-    } catch (err) { console.log("Background fetch silent fail"); } 
+      setServerOffline(false); // Successfully loaded
+    } catch (err) { 
+        console.log("Background fetch silent fail", err); 
+        setServerOffline(true); // 🟢 Triggers the Offline Screen if fetch fails entirely
+    } 
     finally { 
         setIsAppLoading(false); 
     }
@@ -959,7 +936,7 @@ function App() {
     .insight-blue { background: #eff6ff; border-left: 5px solid #3b82f6; color: #1e40af; padding: 15px; border-radius: 8px;}
     @keyframes fade-in { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
     
-    /* 🟢 3D CENTER COIN CSS (DASHBOARD) - SPEED REDUCED TO 8S */
+    /* 🟢 3D CENTER COIN CSS (DASHBOARD) - UNTOUCHED */
     @keyframes flip-coin-3d {
       0% { transform: rotateY(0deg); }
       100% { transform: rotateY(360deg); }
@@ -1011,14 +988,14 @@ function App() {
       padding: 2px;
     }
 
-    /* 🟢 3D GIANT LOADING COIN CSS (OVERLAY) - SPEED REDUCED TO 6S */
+    /* 🟢 3D GIANT COIN CSS (LOADING, OFFLINE, MAINTENANCE) - SKETCH DESIGN */
     @keyframes flip-coin-3d-giant {
       0% { transform: rotateY(0deg); }
       100% { transform: rotateY(360deg); }
     }
     .loader-coin-wrapper {
-      width: 120px;
-      height: 120px;
+      width: 180px;
+      height: 180px;
       perspective: 1000px;
       margin: 0 auto;
     }
@@ -1029,7 +1006,7 @@ function App() {
       transform-style: preserve-3d;
       animation: flip-coin-3d-giant 6s linear infinite;
       border-radius: 50%;
-      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);
+      box-shadow: 0 15px 35px rgba(245, 158, 11, 0.5);
     }
     .loader-coin-front, .loader-coin-back {
       position: absolute;
@@ -1048,36 +1025,80 @@ function App() {
       text-align: center;
     }
     .loader-coin-front {
-      font-size: 65px;
+      font-size: 22px;
       font-weight: 900;
+      line-height: 1.3;
     }
     .loader-coin-back {
       transform: rotateY(180deg);
-      font-size: 16px;
+      font-size: 55px;
       font-weight: 900;
-      line-height: 1.2;
+      line-height: 1;
     }
   `;
 
-  if (isMaintenanceMode) return <MaintenanceScreen />;
-  if (isAdminView) return <AdminCommandCenter token={token} onBack={() => setIsAdminView(false)} />;
-
-  // 🟢 FULL PAGE LOADER FOR INITIAL LOGIN
-  if (isAppLoading && !token) return ( 
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", background: "#f8fafc", padding: "20px" }}>
+  // 🟢 1. MAINTENANCE MODE (GIANT COIN)
+  if (isMaintenanceMode) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", background: "rgba(15, 23, 42, 0.98)", padding: "20px" }}>
       <style>{globalStyles}</style>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-        
-        <div className="loader-coin-wrapper" style={{ marginBottom: "25px" }}>
+        <div className="loader-coin-wrapper" style={{ marginBottom: "30px" }}>
           <div className="loader-coin-inner">
-            <div className="loader-coin-front">₹</div>
-            <div className="loader-coin-back">SUBHAMS<br/>PMMS</div>
+            <div className="loader-coin-front">
+              SUBHAMS<br/>PMMS<br/>
+              <span style={{ fontSize: '13px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px' }}>Maintenance</span>
+            </div>
+            <div className="loader-coin-back">
+              🔒<br/>
+              <span style={{ fontSize: '14px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px' }}>Upgrading</span>
+            </div>
           </div>
         </div>
+        <p style={{ color: "#94a3b8", textAlign: "center", fontSize: "14px", fontWeight: "bold", margin: 0 }}>
+            Target Restore:<br/><span style={{color: "#10b981", fontSize: "18px"}}>{targetRestoreTime}</span>
+        </p>
+      </div>
+    </div>
+  );
 
-        <div style={{ background: "white", padding: "12px 24px", borderRadius: "20px", border: "1px solid #e2e8f0", boxShadow: "0 10px 25px rgba(0,0,0,0.05)" }}>
-            <div style={{ margin: "0", color: "#0f172a", fontSize: "16px", fontWeight: "900" }}>Please wait...</div>
-            <div style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "13px", fontWeight: "700" }}>Waking Server</div>
+  // 🟢 2. SERVER OFFLINE / CONNECTION LOST (GIANT COIN)
+  if (token && serverOffline) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", background: "rgba(15, 23, 42, 0.98)", padding: "20px" }}>
+      <style>{globalStyles}</style>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+        <div className="loader-coin-wrapper" style={{ marginBottom: "30px" }}>
+          <div className="loader-coin-inner">
+            <div className="loader-coin-front">
+              SUBHAMS<br/>PMMS<br/>
+              <span style={{ fontSize: '14px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px', color: '#fca5a5' }}>Offline</span>
+            </div>
+            <div className="loader-coin-back">
+              ⚠️<br/>
+              <span style={{ fontSize: '15px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px', color: '#fca5a5' }}>Server Lost</span>
+            </div>
+          </div>
+        </div>
+        <button onClick={() => { setIsAppLoading(true); setServerOffline(false); fetchAllData(); }} style={{ padding: "12px 28px", background: "transparent", color: "#fca5a5", border: "2px solid #ef4444", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 15px rgba(239, 68, 68, 0.2)", transition: "all 0.2s ease" }}>
+            Retry Connection
+        </button>
+      </div>
+    </div>
+  );
+
+  // 🟢 3. INITIAL APP LOADING / WAKING SERVER (GIANT COIN)
+  if (isAppLoading && !token) return ( 
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", background: "rgba(15, 23, 42, 0.98)", padding: "20px" }}>
+      <style>{globalStyles}</style>
+      <div className="loader-coin-wrapper">
+        <div className="loader-coin-inner">
+          <div className="loader-coin-front">
+            SUBHAMS<br/>PMMS<br/>
+            <span style={{ fontSize: '14px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px' }}>Loading</span>
+          </div>
+          <div className="loader-coin-back">
+            ₹<br/>
+            <span style={{ fontSize: '18px', display: 'block', marginTop: '5px', letterSpacing: '1px' }}>Please Wait</span>
+          </div>
         </div>
       </div>
     </div>
@@ -1263,20 +1284,20 @@ function App() {
 
       <div className="container" style={{ position: 'relative', zIndex: 1 }}>
         
-        {/* 🟢 FULL-SCREEN BLOCKING LOADER FOR OVERLAYS */}
+        {/* 🟢 4. OVERLAY LOADER FOR WHEN TOKEN EXISTS */}
         {isAppLoading && (
-          <div style={{ position: "fixed", top: "0", left: "0", width: "100vw", height: "100vh", background: "rgba(241, 245, 249, 0.9)", backdropFilter: "blur(10px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "25px", zIndex: 9999 }}>
-            
+          <div style={{ position: "fixed", top: "0", left: "0", width: "100vw", height: "100vh", background: "rgba(15, 23, 42, 0.98)", backdropFilter: "blur(10px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
             <div className="loader-coin-wrapper">
               <div className="loader-coin-inner">
-                <div className="loader-coin-front">₹</div>
-                <div className="loader-coin-back">SUBHAMS<br/>PMMS</div>
+                <div className="loader-coin-front">
+                  SUBHAMS<br/>PMMS<br/>
+                  <span style={{ fontSize: '14px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px' }}>Loading</span>
+                </div>
+                <div className="loader-coin-back">
+                  ₹<br/>
+                  <span style={{ fontSize: '16px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px' }}>Please Wait</span>
+                </div>
               </div>
-            </div>
-
-            <div style={{ background: "white", padding: "12px 24px", borderRadius: "20px", border: "1px solid #e2e8f0", boxShadow: "0 10px 25px rgba(0,0,0,0.05)", textAlign: "center" }}>
-                <div style={{ margin: "0", color: "#0f172a", fontSize: "16px", fontWeight: "900" }}>Please wait...</div>
-                <div style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "13px", fontWeight: "700" }}>Connecting to Server</div>
             </div>
           </div>
         )}
