@@ -69,7 +69,7 @@ const globalStyles = `
     height: 45px;
     perspective: 1000px;
     z-index: 10;
-    pointer-events: none;
+    /* OVERRIDDEN INLINE SO IT CAN BE CLICKED */
   }
   .coin-inner {
     width: 100%;
@@ -299,6 +299,10 @@ function App() {
   const [isAppLoading, setIsAppLoading] = useState(!!localStorage.getItem("token")); 
   const [serverOffline, setServerOffline] = useState(false);
   const [authMode, setAuthMode] = useState("login"); 
+  const [sessionMsg, setSessionMsg] = useState(""); 
+  
+  // 🟢 NEW STATE FOR THE EASTER EGG SECURITY COIN POPUP
+  const [showSecurityFeatures, setShowSecurityFeatures] = useState(false);
   
   const [isAppLocked, setIsAppLocked] = useState(!!localStorage.getItem("token") && localStorage.getItem("subhams_app_lock") === "true");
   
@@ -400,7 +404,6 @@ function App() {
     if (!refreshToken || refreshToken === "null") {
       localStorage.removeItem("token");
       localStorage.removeItem("refreshToken");
-      localStorage.removeItem("pmms_user");
       setToken(null);
       setRefreshToken(null);
       return null;
@@ -420,6 +423,8 @@ function App() {
         localStorage.removeItem("refreshToken");
         setToken(null);
         setRefreshToken(null);
+        setAuthMode("login");
+        setSessionMsg("Subhams High Security Protocols Active: Your session was securely closed to protect your data. Please log in again.");
         return null; 
       }
     } catch (err) { 
@@ -472,6 +477,7 @@ function App() {
     if (lockoutTimer > 0) return alert("Account locked. Please wait for the timer.");
     if (!username || !password) return alert("Please enter both Username and Password.");
     
+    setSessionMsg(""); 
     setIsAppLoading(true); 
     try {
       const res = await fetch(`${API}/auth/login`, { 
@@ -532,6 +538,7 @@ function App() {
   };
 
   const handleGoogleSuccess = async (credentialResponse) => {
+    setSessionMsg(""); 
     setIsAppLoading(true);
     try {
       const res = await fetch(`${API}/auth/google-login`, {
@@ -631,6 +638,11 @@ function App() {
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
               body: JSON.stringify({ username: editName })
           });
+          if (res.status === 401 || res.status === 403) {
+              const newToken = await refreshAuthToken();
+              if (newToken) return updateProfileName();
+              return;
+          }
           if (res.ok) {
               const updatedProfile = { ...userProfile, username: editName };
               setUserProfile(updatedProfile);
@@ -652,6 +664,11 @@ function App() {
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
               body: JSON.stringify({ lang })
           });
+          if (res.status === 401 || res.status === 403) {
+              const newToken = await refreshAuthToken();
+              if (newToken) return updateLanguagePreference(lang);
+              return;
+          }
           if (res.ok) {
               const updated = { ...userProfile, preferred_language: lang };
               setUserProfile(updated);
@@ -664,11 +681,16 @@ function App() {
 
   const toggleEmailDigest = async (turnOn) => {
       try {
-          await fetch(`${API}/notifications/toggle-email-digest`, {
+          const res = await fetch(`${API}/notifications/toggle-email-digest`, {
               method: "PUT",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
               body: JSON.stringify({ email_digest_enabled: turnOn })
           });
+          if (res.status === 401 || res.status === 403) {
+              const newToken = await refreshAuthToken();
+              if (newToken) return toggleEmailDigest(turnOn);
+              return;
+          }
           const updated = { ...userProfile, email_digest_enabled: turnOn };
           setUserProfile(updated);
           localStorage.setItem("pmms_user", JSON.stringify(updated));
@@ -697,11 +719,17 @@ function App() {
               applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
           });
 
-          await fetch(`${API}/notifications/subscribe`, {
+          const res = await fetch(`${API}/notifications/subscribe`, {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
               body: JSON.stringify(subscription)
           });
+
+          if (res.status === 401 || res.status === 403) {
+              const newToken = await refreshAuthToken();
+              if (newToken) return setupPushNotifications();
+              return;
+          }
 
           setPushEnabled(true);
           const updated = { ...userProfile, silent_mode: false };
@@ -717,11 +745,16 @@ function App() {
   const toggleSilentMode = async (turnSilent) => {
       setIsProcessingPush(true);
       try {
-          await fetch(`${API}/notifications/toggle-silent`, {
+          const res = await fetch(`${API}/notifications/toggle-silent`, {
               method: "PUT",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
               body: JSON.stringify({ silent: turnSilent })
           });
+          if (res.status === 401 || res.status === 403) {
+              const newToken = await refreshAuthToken();
+              if (newToken) return toggleSilentMode(turnSilent);
+              return;
+          }
           const updated = { ...userProfile, silent_mode: turnSilent };
           setUserProfile(updated);
           localStorage.setItem("pmms_user", JSON.stringify(updated));
@@ -831,11 +864,16 @@ function App() {
     setIsDownloading(true); 
 
     if (token) {
-      fetch(`${API}/notifications/track-feature`, {
+      const res = await fetch(`${API}/notifications/track-feature`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ feature_name: "pdf_report_downloaded" })
       }).catch(() => {});
+      
+      if (res && (res.status === 401 || res.status === 403)) {
+          const newToken = await refreshAuthToken();
+          if (!newToken) { setIsDownloading(false); return; }
+      }
     }
 
     const pdfIncome = transactions.filter(t => t.type === "income").reduce((a, b) => a + Number(b.amount), 0);
@@ -995,12 +1033,21 @@ function App() {
         method, headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, 
         body: JSON.stringify({ title, amount: Number(amount), type, category, date }) 
       });
+
+      if (res.status === 401 || res.status === 403) {
+          const newToken = await refreshAuthToken();
+          if (newToken) return handleSubmit(type); 
+          return; 
+      }
+
       if (res.ok) { 
         setTxSuccessMsg(`✅ Saved successfully: ₹${amount} as ${type}`);
         setTimeout(() => setTxSuccessMsg(""), 4000); 
-
         setTitle(""); setAmount(""); setEditingId(null); setCategory("Other"); setDate(new Date().toISOString().split('T')[0]); fetchAllData(); 
-      } else { const errData = await res.json(); alert("Error: " + errData.message); }
+      } else { 
+        const errData = await res.json(); 
+        alert("Error: " + errData.message); 
+      }
     } catch (err) { alert(DEVICE_ERROR_MSG); }
   };
 
@@ -1016,6 +1063,13 @@ function App() {
     if (!window.confirm("Delete this transaction?")) return;
     try {
       const res = await fetch(`${API}/transactions/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      
+      if (res.status === 401 || res.status === 403) {
+          const newToken = await refreshAuthToken();
+          if (newToken) return deleteTransaction(id);
+          return;
+      }
+      
       if (res.ok) fetchAllData(); 
     } catch (err) { alert(DEVICE_ERROR_MSG); }
   };
@@ -1024,6 +1078,13 @@ function App() {
     try {
       const query = new URLSearchParams({ type: filterType, category: filterCategory, search: searchQuery, startDate: filterStartDate, endDate: filterEndDate }).toString();
       const res = await fetch(`${API}/transactions/filter?${query}`, { headers: { Authorization: `Bearer ${token}` } });
+      
+      if (res.status === 401 || res.status === 403) {
+          const newToken = await refreshAuthToken();
+          if (newToken) return applyFilters();
+          return;
+      }
+
       const data = await res.json(); if (Array.isArray(data)) setTransactions(data); 
     } catch (err) { alert(DEVICE_ERROR_MSG); }
   };
@@ -1039,6 +1100,8 @@ function App() {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ feature_name: "interest_calculator_used" })
+      }).then(res => {
+          if (res.status === 401 || res.status === 403) refreshAuthToken();
       }).catch(() => {});
     }
 
@@ -1136,12 +1199,10 @@ function App() {
     }
   }
 
-  // 🟢 EARLY RENDER CHECKS USING THE NEW COIN COMPONENT
   if (isMaintenanceMode) return <MaintenanceScreen />;
   if (isAdminView) return <AdminCommandCenter token={token} onBack={() => setIsAdminView(false)} />;
   if (token && serverOffline) return <ServerOfflineScreen onRetry={() => { setIsAppLoading(true); setServerOffline(false); fetchAllData(); }} />;
 
-  // 🟢 FULL PAGE LOADER FOR INITIAL LOGIN / SERVER WAKE-UP
   if (isAppLoading && !token) return ( 
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", background: "rgba(15, 23, 42, 0.98)", padding: "20px" }}>
       <style>{globalStyles}</style>
@@ -1169,6 +1230,13 @@ function App() {
         <h1 className="brand-logo" style={{ marginBottom: "5px", fontSize: "2.5rem" }}>SUBHAMS</h1>
         {authMode === "login" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
+            
+            {sessionMsg && (
+                <div style={{ padding: "12px", background: "#eff6ff", color: "#1e40af", border: "1px solid #93c5fd", borderRadius: "8px", fontSize: "13px", fontWeight: "bold", textAlign: "center", lineHeight: "1.4" }}>
+                    🛡️ {sessionMsg}
+                </div>
+            )}
+
             <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} placeholder="Username or Email" value={username} onChange={e => setUsername(e.target.value)} disabled={lockoutTimer > 0} />
             <input style={{ padding: "15px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "16px", outline: "none" }} type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} disabled={lockoutTimer > 0} />
             <p style={{ margin: "0", textAlign: "right", fontSize: "13px", color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("forgot")}>Forgot Password?</p>
@@ -1217,7 +1285,7 @@ function App() {
           </div>
         )}
       </div>
-     <InstallPopup />
+      <InstallPopup />
     </div>
   );
 
@@ -1225,7 +1293,29 @@ function App() {
     <div>
       <style>{globalStyles}</style>
 
-      {/* 🟢 OVERLAY LOADER FOR BACKGROUND DATA FETCHES AFTER LOGIN */}
+      {/* 🟢 NEW EASTER EGG SECURITY PANEL */}
+      {showSecurityFeatures && (
+          <div style={{ position: "fixed", top: "0", left: "0", width: "100vw", height: "100vh", background: "rgba(15, 23, 42, 0.95)", backdropFilter: "blur(10px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 99999, padding: "20px" }}>
+              
+              <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="NETWORKS" frontSubtitle="Security" backIcon="🛡️" backSubtitle="Protected" iconColor="#10b981" />
+              
+              <div style={{ background: "white", padding: "30px", borderRadius: "16px", width: "100%", maxWidth: "400px", boxShadow: "0 0 30px rgba(59, 130, 246, 0.3)", position: "relative", textAlign: "center", animation: "fade-in 0.5s ease-out" }}>
+                  <h2 style={{ margin: "0 0 20px 0", color: "#0f172a", fontSize: "20px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                      🛡️ Subhams High Security Protocols
+                  </h2>
+                  <div style={{ textAlign: "left", color: "#475569", fontSize: "15px", lineHeight: "1.8", marginBottom: "25px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}><Check size={18} color="#10b981" /> Biometric Device Locking</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}><Check size={18} color="#10b981" /> Cryptographically Secure Data</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}><Check size={18} color="#10b981" /> Smart Analytics & Insights</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}><Check size={18} color="#10b981" /> Real-time Sync via Subhams Networks</div>
+                  </div>
+                  <button onClick={() => setShowSecurityFeatures(false)} style={{ width: "100%", padding: "14px", background: "#3b82f6", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 10px rgba(59, 130, 246, 0.3)" }}>
+                      Close Security Panel
+                  </button>
+              </div>
+          </div>
+      )}
+
       {isAppLoading && token && (
           <div style={{ position: "fixed", top: "0", left: "0", width: "100vw", height: "100vh", background: "rgba(15, 23, 42, 0.98)", backdropFilter: "blur(10px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
             <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="Loading" backIcon="₹" backSubtitle="Please Wait" />
@@ -1366,8 +1456,8 @@ function App() {
           <div className="metric-card"><div className="metric-title">PENDING <br/>పెండింగ్</div><div className="metric-value" style={{ color: "#f59e0b" }}>₹{pending}</div></div>
           <div className="metric-card" style={{ backgroundColor: balance >= 0 ? "#f0fdf4" : "#fef2f2" }}><div className="metric-title">BALANCE <br/>నిల్వ</div><div className="metric-value" style={{ color: balance >= 0 ? "#3b82f6" : "#ef4444" }}>₹{balance}</div></div>
           
-          {/* 🟢 3D CENTER SPINNING COIN IN DASHBOARD */}
-          <div className="coin-wrapper">
+          {/* 🟢 3D CENTER SPINNING COIN IN DASHBOARD - NOW CLICKABLE FOR EASTER EGG */}
+          <div className="coin-wrapper" style={{ cursor: "pointer", pointerEvents: "auto" }} onClick={() => setShowSecurityFeatures(true)}>
             <div className="coin-inner">
               <div className="coin-front">₹</div>
               <div className="coin-back">SUBHAMS<br/>PMMS</div>
@@ -1565,7 +1655,7 @@ function App() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><span style={{ animation: 'float-sparkle 2s ease-in-out infinite', fontSize: '13px' }}>✨</span><p style={{ fontSize: '10px', color: '#64748b', fontWeight: '800', margin: 0, letterSpacing: '1.5px' }}>POWERED BY <span className="subhams-brand-text">SUBHAMS</span></p><span style={{ animation: 'float-sparkle 2s ease-in-out infinite 1s', fontSize: '13px' }}>✨</span></div>
         <div style={{ height: '3px', background: 'linear-gradient(90deg, transparent, #3b82f6, #a855f7, transparent)', margin: '8px auto 0 auto', borderRadius: '10px', animation: 'line-breathe 3s ease-in-out infinite' }}></div>
       </div>
-   <InstallPopup />
+      <InstallPopup />
     </div>
   );
 }
