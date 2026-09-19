@@ -14,7 +14,7 @@ const PUBLIC_VAPID_KEY = process.env.REACT_APP_VAPID_PUBLIC_KEY || "YOUR_PUBLIC_
 
 const DEVICE_ERROR_MSG = "⚠️ Device Error: Your personal mobile or network is currently stuck or blocking the request. Please check your connection, clear cache, or restart the app.";
 
-// 🟢 MOVED STYLES TO TOP TO PREVENT VERCEL BUILD CRASHES
+// 🟢 MOVED ALL STYLES TO THE VERY TOP TO PREVENT VERCEL BUILD CRASHES
 const smStyles = {
     container: { minHeight: '100vh', width: '100%', backgroundColor: '#020617', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', boxSizing: 'border-box', fontFamily: "'Segoe UI', Roboto, Helvetica, Arial, sans-serif" },
     card: { display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', backgroundColor: '#0f172a', borderRadius: '16px', padding: '40px', maxWidth: '550px', width: '100%', boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.7)', border: '1px solid #1e293b' },
@@ -29,6 +29,148 @@ const smStyles = {
     restoreTime: { color: '#10b981', fontSize: '20px', fontWeight: '900', letterSpacing: '0.5px' },
     footerText: { color: '#94a3b8', fontSize: '14px', lineHeight: '1.6', margin: '0' }
 };
+
+const globalStyles = `
+  * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+  body { background-color: #f1f5f9; margin: 0; color: #334155; }
+  .nav-bar { background: #0f172a; color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 15px; position: relative; z-index: 1; }
+  .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 20px; position: relative; }
+  .action-grid { display: grid; grid-template-columns: 35% 65%; gap: 20px; }
+  @media (max-width: 900px) { .action-grid { grid-template-columns: 1fr; } }
+  .metric-card { text-align: center; padding: 20px; border-radius: 12px; background: white; border: 1px solid #e2e8f0; }
+  .metric-title { font-size: 0.85rem; color: #64748b; font-weight: bold; letter-spacing: 1px; }
+  .metric-value { font-size: 2rem; font-weight: 800; margin: 10px 0 0 0; }
+  .history-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #e2e8f0; margin-bottom: 8px; border-radius: 8px; transition: 0.2s; }
+  .spinner { width: 50px; height: 50px; border: 5px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
+  .marquee-container { background-color: #1e293b; color: #fbbf24; padding: 10px; overflow: hidden; white-space: nowrap; position: relative; z-index: 1; }
+  .marquee-text { display: inline-block; animation: scrollLeft 30s linear infinite; font-weight: 500; letter-spacing: 0.5px; }
+  @keyframes scrollLeft { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
+  .brand-logo { font-size: 2.2rem; font-weight: 900; letter-spacing: -1px; margin: 0; background: linear-gradient(45deg, #f59e0b, #facc15); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .scrollable-history::-webkit-scrollbar { width: 6px; }
+  .scrollable-history::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+  .scrollable-history::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+  .insight-green { background: #f0fdf4; border-left: 5px solid #10b981; color: #065f46; padding: 15px; border-radius: 8px;}
+  .insight-red { background: #fef2f2; border-left: 5px solid #ef4444; color: #991b1b; padding: 15px; border-radius: 8px;}
+  .insight-blue { background: #eff6ff; border-left: 5px solid #3b82f6; color: #1e40af; padding: 15px; border-radius: 8px;}
+  @keyframes fade-in { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+  
+  /* 🟢 3D CENTER COIN CSS (DASHBOARD) */
+  @keyframes flip-coin-3d {
+    0% { transform: rotateY(0deg); }
+    100% { transform: rotateY(360deg); }
+  }
+  .coin-wrapper {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 45px;
+    height: 45px;
+    perspective: 1000px;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .coin-inner {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    animation: flip-coin-3d 8s linear infinite;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    border-radius: 50%;
+  }
+  .coin-front, .coin-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%);
+    border: 2px solid #fef08a;
+    color: #fffbeb;
+    text-shadow: 1px 1px 2px rgba(180, 83, 9, 0.8);
+  }
+  .coin-front {
+    font-size: 24px;
+    font-weight: 900;
+  }
+  .coin-back {
+    transform: rotateY(180deg);
+    font-size: 8px;
+    font-weight: bold;
+    text-align: center;
+    line-height: 1.1;
+    padding: 2px;
+  }
+
+  /* 🟢 3D GIANT COIN CSS (LOADING, OFFLINE, MAINTENANCE) */
+  @keyframes flip-coin-3d-giant {
+    0% { transform: rotateY(0deg); }
+    100% { transform: rotateY(360deg); }
+  }
+  .loader-coin-wrapper {
+    width: 180px;
+    height: 180px;
+    perspective: 1000px;
+    margin: 0 auto;
+  }
+  .loader-coin-inner {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    animation: flip-coin-3d-giant 6s linear infinite;
+    border-radius: 50%;
+    box-shadow: 0 15px 35px rgba(245, 158, 11, 0.5);
+  }
+  .loader-coin-front, .loader-coin-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%);
+    border: 6px solid #fef08a;
+    color: #fffbeb;
+    text-shadow: 1px 2px 4px rgba(180, 83, 9, 0.8);
+    text-align: center;
+  }
+  .loader-coin-front {
+    font-size: 22px;
+    font-weight: 900;
+    line-height: 1.3;
+  }
+  .loader-coin-back {
+    transform: rotateY(180deg);
+    font-size: 55px;
+    font-weight: 900;
+    line-height: 1;
+  }
+`;
+
+// 🟢 NEW REUSABLE COMPONENT FOR THE GIANT COIN TEXT
+const GiantSpinningCoin = ({ frontTitle1, frontTitle2, frontSubtitle, backIcon, backSubtitle, iconColor = "#fffbeb" }) => (
+    <div className="loader-coin-wrapper" style={{ marginBottom: "25px", marginTop: "10px" }}>
+      <div className="loader-coin-inner">
+        <div className="loader-coin-front">
+          {frontTitle1}<br/>{frontTitle2}<br/>
+          <span style={{ fontSize: '14px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px' }}>{frontSubtitle}</span>
+        </div>
+        <div className="loader-coin-back">
+          <span style={{ color: iconColor }}>{backIcon}</span><br/>
+          <span style={{ fontSize: '16px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px', display: 'block' }}>{backSubtitle}</span>
+        </div>
+      </div>
+    </div>
+);
 
 const formatDate = (dateString) => {
   if (!dateString) return "";
@@ -75,6 +217,7 @@ const urlBase64ToUint8Array = (base64String) => {
   return outputArray;
 };
 
+// 🟢 1. MAINTENANCE SCREEN WITH GIANT COIN
 const MaintenanceScreen = () => {
     const [currentTime, setCurrentTime] = useState(new Date());
     useEffect(() => {
@@ -84,32 +227,51 @@ const MaintenanceScreen = () => {
     const liveTimeString = currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
     return (
-        <div style={smStyles.container}>
+        <div style={{...smStyles.container, background: "rgba(15, 23, 42, 0.98)"}}>
+            <style>{globalStyles}</style>
             <div style={smStyles.card}>
-                <h1 style={smStyles.brandTitle}>SUBHAMS <span style={{color: '#f59e0b'}}>PMMS</span></h1>
-                <div style={smStyles.secureBadge}>🔒 SECURE MAINTENANCE / సురక్షిత నిర్వహణ</div>
+                <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="Maintenance" backIcon="🔒" backSubtitle="Upgrading" />
+                <h1 style={smStyles.brandTitle}>SYSTEM <span style={{color: '#f59e0b'}}>UPGRADE</span></h1>
                 <p style={smStyles.subtitle}>
                     <strong>Your financial dashboard is currently offline for a security upgrade.</strong><br/>
                     <span style={{color: '#94a3b8', fontSize: '15px'}}>మీ ఫైనాన్షియల్ డ్యాష్‌బోర్డ్ భద్రతా అప్‌గ్రేడ్ కోసం ప్రస్తుతం ఆఫ్‌లైన్‌లో ఉంది.</span>
                 </p>
                 <div style={smStyles.timePanelContainer}>
                     <div style={smStyles.liveTimeBox}>
-                        <div style={smStyles.timeLabel}>PRESENT TIME / ప్రస్తుత సమయం</div>
+                        <div style={smStyles.timeLabel}>PRESENT TIME</div>
                         <div style={smStyles.liveTimeValue}>{liveTimeString}</div>
                     </div>
                     <div style={smStyles.restorePanel}>
-                        <div style={smStyles.timeLabel}>TARGET RESTORE TIME / లక్ష్యం</div>
+                        <div style={smStyles.timeLabel}>TARGET RESTORE</div>
                         <div style={smStyles.restoreTime}>{targetRestoreTime}</div>
                     </div>
                 </div>
-                <p style={smStyles.footerText}>
-                    Thank you for your patience. <span style={{fontSize: '13px'}}>(మీ ఓపికకు ధన్యవాదాలు)</span><br/><br/>
-                    <strong>- Venkata Pavan Kumar Amarthaluri</strong>
-                </p>
             </div>
         </div>
     );
 };
+
+// 🟢 2. SERVER OFFLINE SCREEN WITH GIANT COIN
+const ServerOfflineScreen = ({ onRetry }) => (
+    <div style={{...smStyles.container, background: "rgba(15, 23, 42, 0.98)"}}>
+        <style>{globalStyles}</style>
+        <div style={smStyles.card}>
+            <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="Offline" backIcon="⚠️" backSubtitle="Server Lost" iconColor="#fca5a5" />
+            <h1 style={{ color: "white", marginBottom: "10px", fontSize: "28px", marginTop: 0 }}>Connection <span style={{color: '#ef4444'}}>Lost</span></h1>
+            <p style={{ color: "#94a3b8", marginBottom: "30px", fontSize: "15px", lineHeight: "1.6" }}>
+                <strong>We couldn&apos;t connect to the Subhams backend.</strong><br/><br/>
+                The server might be down for maintenance, suspended, or your network connection is unstable.<br/>
+                <span style={{color: '#cbd5e1', fontSize: '13px', display: 'block', marginTop: '10px'}}>సర్వర్ కనెక్ట్ కాలేదు. దయచేసి మళ్ళీ ప్రయత్నించండి.</span>
+            </p>
+            <button
+                onClick={onRetry}
+                style={{ padding: "14px 28px", background: "#ef4444", color: "white", border: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", boxShadow: "0 4px 15px rgba(239, 68, 68, 0.4)", margin: "0 auto" }}
+            >
+                <Power size={20} /> Retry Connection
+            </button>
+        </div>
+    </div>
+);
 
 const AppLockScreen = ({ onUnlock }) => (
   <div style={smStyles.container}>
@@ -123,7 +285,7 @@ const AppLockScreen = ({ onUnlock }) => (
       </p>
       <button 
         onClick={onUnlock} 
-        style={{ padding: "16px 32px", background: "#10b981", color: "white", border: "none", borderRadius: "8px", fontSize: "18px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", boxShadow: "0 4px 15px rgba(16, 185, 129, 0.4)" }}
+        style={{ padding: "16px 32px", background: "#10b981", color: "white", border: "none", borderRadius: "8px", fontSize: "18px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "10px", boxShadow: "0 4px 15px rgba(16, 185, 129, 0.4)", margin: "0 auto" }}
       >
          <Fingerprint size={24} /> Unlock Dashboard
       </button>
@@ -962,195 +1124,17 @@ function App() {
     }
   }
 
-  const globalStyles = `
-    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background-color: #f1f5f9; margin: 0; color: #334155; }
-    .nav-bar { background: #0f172a; color: white; padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
-    .container { max-width: 1200px; margin: 0 auto; padding: 15px; position: relative; z-index: 1; }
-    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 20px; position: relative; }
-    .action-grid { display: grid; grid-template-columns: 35% 65%; gap: 20px; }
-    @media (max-width: 900px) { .action-grid { grid-template-columns: 1fr; } }
-    .metric-card { text-align: center; padding: 20px; border-radius: 12px; background: white; border: 1px solid #e2e8f0; }
-    .metric-title { font-size: 0.85rem; color: #64748b; font-weight: bold; letter-spacing: 1px; }
-    .metric-value { font-size: 2rem; font-weight: 800; margin: 10px 0 0 0; }
-    .history-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #e2e8f0; margin-bottom: 8px; border-radius: 8px; transition: 0.2s; }
-    .spinner { width: 50px; height: 50px; border: 5px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
-    .marquee-container { background-color: #1e293b; color: #fbbf24; padding: 10px; overflow: hidden; white-space: nowrap; position: relative; z-index: 1; }
-    .marquee-text { display: inline-block; animation: scrollLeft 30s linear infinite; font-weight: 500; letter-spacing: 0.5px; }
-    @keyframes scrollLeft { 0% { transform: translateX(100vw); } 100% { transform: translateX(-100%); } }
-    .brand-logo { font-size: 2.2rem; font-weight: 900; letter-spacing: -1px; margin: 0; background: linear-gradient(45deg, #f59e0b, #facc15); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .scrollable-history::-webkit-scrollbar { width: 6px; }
-    .scrollable-history::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
-    .scrollable-history::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-    .insight-green { background: #f0fdf4; border-left: 5px solid #10b981; color: #065f46; padding: 15px; border-radius: 8px;}
-    .insight-red { background: #fef2f2; border-left: 5px solid #ef4444; color: #991b1b; padding: 15px; border-radius: 8px;}
-    .insight-blue { background: #eff6ff; border-left: 5px solid #3b82f6; color: #1e40af; padding: 15px; border-radius: 8px;}
-    @keyframes fade-in { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
-    
-    /* 🟢 3D CENTER COIN CSS (DASHBOARD) - UNTOUCHED */
-    @keyframes flip-coin-3d {
-      0% { transform: rotateY(0deg); }
-      100% { transform: rotateY(360deg); }
-    }
-    .coin-wrapper {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 45px;
-      height: 45px;
-      perspective: 1000px;
-      z-index: 10;
-      pointer-events: none;
-    }
-    .coin-inner {
-      width: 100%;
-      height: 100%;
-      position: relative;
-      transform-style: preserve-3d;
-      animation: flip-coin-3d 8s linear infinite;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-      border-radius: 50%;
-    }
-    .coin-front, .coin-back {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      backface-visibility: hidden;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%);
-      border: 2px solid #fef08a;
-      color: #fffbeb;
-      text-shadow: 1px 1px 2px rgba(180, 83, 9, 0.8);
-    }
-    .coin-front {
-      font-size: 24px;
-      font-weight: 900;
-    }
-    .coin-back {
-      transform: rotateY(180deg);
-      font-size: 8px;
-      font-weight: bold;
-      text-align: center;
-      line-height: 1.1;
-      padding: 2px;
-    }
+  // 🟢 EARLY RENDER CHECKS USING THE NEW COIN COMPONENT
+  if (isMaintenanceMode) return <MaintenanceScreen />;
+  if (isAdminView) return <AdminCommandCenter token={token} onBack={() => setIsAdminView(false)} />;
+  if (token && serverOffline) return <ServerOfflineScreen onRetry={() => { setIsAppLoading(true); setServerOffline(false); fetchAllData(); }} />;
 
-    /* 🟢 3D GIANT COIN CSS (LOADING, OFFLINE, MAINTENANCE) - SKETCH DESIGN */
-    @keyframes flip-coin-3d-giant {
-      0% { transform: rotateY(0deg); }
-      100% { transform: rotateY(360deg); }
-    }
-    .loader-coin-wrapper {
-      width: 180px;
-      height: 180px;
-      perspective: 1000px;
-      margin: 0 auto;
-    }
-    .loader-coin-inner {
-      width: 100%;
-      height: 100%;
-      position: relative;
-      transform-style: preserve-3d;
-      animation: flip-coin-3d-giant 6s linear infinite;
-      border-radius: 50%;
-      box-shadow: 0 15px 35px rgba(245, 158, 11, 0.5);
-    }
-    .loader-coin-front, .loader-coin-back {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      backface-visibility: hidden;
-      border-radius: 50%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #fde047 0%, #f59e0b 50%, #b45309 100%);
-      border: 6px solid #fef08a;
-      color: #fffbeb;
-      text-shadow: 1px 2px 4px rgba(180, 83, 9, 0.8);
-      text-align: center;
-    }
-    .loader-coin-front {
-      font-size: 22px;
-      font-weight: 900;
-      line-height: 1.3;
-    }
-    .loader-coin-back {
-      transform: rotateY(180deg);
-      font-size: 55px;
-      font-weight: 900;
-      line-height: 1;
-    }
-  `;
-
-  // 🟢 1. MAINTENANCE MODE (GIANT COIN)
-  if (isMaintenanceMode) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", background: "rgba(15, 23, 42, 0.98)", padding: "20px" }}>
-      <style>{globalStyles}</style>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-        <div className="loader-coin-wrapper" style={{ marginBottom: "30px" }}>
-          <div className="loader-coin-inner">
-            <div className="loader-coin-front">
-              SUBHAMS<br/>PMMS<br/>
-              <span style={{ fontSize: '13px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px' }}>Maintenance</span>
-            </div>
-            <div className="loader-coin-back">
-              🔒<br/>
-              <span style={{ fontSize: '14px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px' }}>Upgrading</span>
-            </div>
-          </div>
-        </div>
-        <p style={{ color: "#94a3b8", textAlign: "center", fontSize: "14px", fontWeight: "bold", margin: 0 }}>
-            Target Restore:<br/><span style={{color: "#10b981", fontSize: "18px"}}>{targetRestoreTime}</span>
-        </p>
-      </div>
-    </div>
-  );
-
-  // 🟢 2. SERVER OFFLINE / CONNECTION LOST (GIANT COIN)
-  if (token && serverOffline) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", background: "rgba(15, 23, 42, 0.98)", padding: "20px" }}>
-      <style>{globalStyles}</style>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-        <div className="loader-coin-wrapper" style={{ marginBottom: "30px" }}>
-          <div className="loader-coin-inner">
-            <div className="loader-coin-front">
-              SUBHAMS<br/>PMMS<br/>
-              <span style={{ fontSize: '14px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px', color: '#fca5a5' }}>Offline</span>
-            </div>
-            <div className="loader-coin-back">
-              ⚠️<br/>
-              <span style={{ fontSize: '15px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px', color: '#fca5a5' }}>Server Lost</span>
-            </div>
-          </div>
-        </div>
-        <button onClick={() => { setIsAppLoading(true); setServerOffline(false); fetchAllData(); }} style={{ padding: "12px 28px", background: "transparent", color: "#fca5a5", border: "2px solid #ef4444", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", cursor: "pointer", boxShadow: "0 4px 15px rgba(239, 68, 68, 0.2)", transition: "all 0.2s ease" }}>
-            Retry Connection
-        </button>
-      </div>
-    </div>
-  );
-
-  // 🟢 3. INITIAL APP LOADING / WAKING SERVER (GIANT COIN)
+  // 🟢 FULL PAGE LOADER FOR INITIAL LOGIN / SERVER WAKE-UP
   if (isAppLoading && !token) return ( 
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh", background: "rgba(15, 23, 42, 0.98)", padding: "20px" }}>
       <style>{globalStyles}</style>
-      <div className="loader-coin-wrapper">
-        <div className="loader-coin-inner">
-          <div className="loader-coin-front">
-            SUBHAMS<br/>PMMS<br/>
-            <span style={{ fontSize: '14px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px' }}>Loading</span>
-          </div>
-          <div className="loader-coin-back">
-            ₹<br/>
-            <span style={{ fontSize: '18px', display: 'block', marginTop: '5px', letterSpacing: '1px' }}>Please Wait</span>
-          </div>
-        </div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+        <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="Loading" backIcon="₹" backSubtitle="Please Wait" />
       </div>
     </div>
   );
@@ -1228,6 +1212,13 @@ function App() {
   return (
     <div>
       <style>{globalStyles}</style>
+
+      {/* 🟢 OVERLAY LOADER FOR BACKGROUND DATA FETCHES AFTER LOGIN */}
+      {isAppLoading && token && (
+          <div style={{ position: "fixed", top: "0", left: "0", width: "100vw", height: "100vh", background: "rgba(15, 23, 42, 0.98)", backdropFilter: "blur(10px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
+            <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="Loading" backIcon="₹" backSubtitle="Please Wait" />
+          </div>
+      )}
 
       <div className="marquee-container">
         <div className="marquee-text">🚀 Important Note: Welcome to your Subhams Personal Money Management System! Track your income, manage your expenses, and secure your financial future! Thank You visiting My website! Venkata Pavan Kumar.</div>
@@ -1334,24 +1325,6 @@ function App() {
       )}
 
       <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-        
-        {/* 🟢 4. OVERLAY LOADER FOR WHEN TOKEN EXISTS */}
-        {isAppLoading && (
-          <div style={{ position: "fixed", top: "0", left: "0", width: "100vw", height: "100vh", background: "rgba(15, 23, 42, 0.98)", backdropFilter: "blur(10px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
-            <div className="loader-coin-wrapper">
-              <div className="loader-coin-inner">
-                <div className="loader-coin-front">
-                  SUBHAMS<br/>PMMS<br/>
-                  <span style={{ fontSize: '14px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px' }}>Loading</span>
-                </div>
-                <div className="loader-coin-back">
-                  ₹<br/>
-                  <span style={{ fontSize: '16px', fontWeight: 'bold', letterSpacing: '1px', marginTop: '5px' }}>Please Wait</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         <div style={{ marginBottom: '25px', marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <h2 style={{ margin: 0, fontSize: '28px', color: '#0f172a', fontWeight: '900', letterSpacing: '-0.5px' }}>Hello, <span style={{ color: '#3b82f6' }}>{userProfile.username || "User"}</span> 👋</h2>
@@ -1409,7 +1382,7 @@ function App() {
             {showTxInfo && (
                 <div style={{ background: "#eff6ff", border: "1px dashed #3b82f6", padding: "12px", borderRadius: "8px", fontSize: "13px", color: "#1e40af", marginBottom: "15px", lineHeight: "1.6" }}>
                     <b>How to save:</b><br/>
-                    1. Enter title (e.g., person's name or purpose).<br/>
+                    1. Enter title (e.g., person&apos;s name or purpose).<br/>
                     2. Enter amount.<br/>
                     3. Select a category and date.<br/>
                     4. Click the green (+ Income), red (- Expense), or yellow (⏳ Pending) button below to securely save your record.
