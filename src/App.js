@@ -154,9 +154,7 @@ const GiantSpinningCoin = ({ frontTitle1, frontTitle2, frontSubtitle, backIcon, 
         <div className="loader-coin-front">
           <svg viewBox="0 0 180 180" style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
             <defs>
-              {/* Top Curve */}
               <path id="topArc" d="M 30,90 A 60,60 0 0,1 150,90" />
-              {/* Bottom Curve (Left-to-Right sweep to keep text upright) */}
               <path id="bottomArc" d="M 30,90 A 60,60 0 0,0 150,90" />
             </defs>
             <text fill="#fffbeb" fontSize="18" fontWeight="900" letterSpacing="2" style={{ filter: 'drop-shadow(1px 2px 4px rgba(180, 83, 9, 0.8))' }}>
@@ -307,11 +305,8 @@ function App() {
   const [authMode, setAuthMode] = useState("login"); 
   const [sessionMsg, setSessionMsg] = useState(""); 
   
-  // 🟢 STATE FOR THE BACKGROUND TOKEN TRACKER
   const [expiryWarning, setExpiryWarning] = useState("");
-  
   const [showSecurityFeatures, setShowSecurityFeatures] = useState(false);
-  
   const [isAppLocked, setIsAppLocked] = useState(!!localStorage.getItem("token") && localStorage.getItem("subhams_app_lock") === "true");
   
   const [token, setToken] = useState(localStorage.getItem("token"));
@@ -365,9 +360,9 @@ function App() {
   const formRef = useRef(null); 
   const [isAdminView, setIsAdminView] = useState(false);
 
-  // 🟢 SMART BACKGROUND TOKEN SCANNER (CHECKS EXPIRY WITHOUT CLICKS)
+  // 🟢 SMART BACKGROUND TOKEN SCANNER (FRIENDLY EXPIRY WARNING)
   useEffect(() => {
-      if (!refreshToken || refreshToken === "null") return;
+      if (!refreshToken || refreshToken === "null" || authMode === "login") return;
 
       const checkTokenExpiry = () => {
           try {
@@ -378,17 +373,21 @@ function App() {
               const timeLeft = expTime - Date.now();
 
               if (timeLeft <= 0) {
-                  // TOKEN DEAD: Instant Auto-Logout
                   localStorage.removeItem("token");
                   localStorage.removeItem("refreshToken");
                   setToken(null);
                   setRefreshToken(null);
                   setAuthMode("login");
-                  setSessionMsg("👋 Welcome back! Your 30-day session has naturally expired. Please log in again to continue.");
+                  
+                  // Only show the message if it expired while they were staring at the screen recently
+                  if (timeLeft > -10000) {
+                      setSessionMsg("👋 Welcome back! Your 30-day session has naturally expired. Please log in again to continue.");
+                  } else {
+                      setSessionMsg("");
+                  }
                   setExpiryWarning("");
               } else if (timeLeft <= 60000) { 
-                  // TOKEN DYING: Show friendly warning banner when < 60 seconds left
-                  setExpiryWarning(`⏳  Reminder: Your 30-day session expires in ${Math.ceil(timeLeft/1000)} seconds. Please save any pending work; you will be redirected to log in.`);
+                  setExpiryWarning(`⏳ Friendly Reminder: Your session expires in ${Math.ceil(timeLeft/1000)}s. Please save your work.`);
               } else {
                   setExpiryWarning("");
               }
@@ -400,7 +399,7 @@ function App() {
       checkTokenExpiry(); 
       const interval = setInterval(checkTokenExpiry, 1000); 
       return () => clearInterval(interval);
-  }, [refreshToken]);
+  }, [refreshToken, authMode]);
 
   useEffect(() => {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
@@ -459,10 +458,7 @@ function App() {
         body: JSON.stringify({ token: refreshToken })
       });
       
-      // 🟢 404 FAILSAFE - IF BACKEND ROUTE FAILS OR MISSING, AVOID ENDLESS LOOP
-      if (res.status === 404) {
-          throw new Error("Refresh endpoint not found");
-      }
+      if (res.status === 404) throw new Error("Refresh endpoint not found");
 
       const data = await res.json();
       if (res.ok && data.accessToken) {
@@ -475,17 +471,16 @@ function App() {
         setToken(null);
         setRefreshToken(null);
         setAuthMode("login");
-        setSessionMsg("👋 Welcome back! Your 30-day session has naturally expired. Please log in again to continue.");
+        setSessionMsg(""); // No message if it's a silent background failure on load
         return null; 
       }
     } catch (err) { 
-      // Failsafe catch for the 404
       localStorage.removeItem("token");
       localStorage.removeItem("refreshToken");
       setToken(null);
       setRefreshToken(null);
       setAuthMode("login");
-      setSessionMsg("👋 Welcome back! Your 30-day session has naturally expired. Please log in again to continue.");
+      setSessionMsg(""); // Keep clean for initial fresh loads
       return null; 
     }
   }, [refreshToken]);
@@ -536,7 +531,7 @@ function App() {
     if (!username || !password) return alert("Please enter both Username and Password.");
     
     setSessionMsg(""); 
-    setIsAppLoading(true); 
+    setIsAppLoading(true); // Loading ONLY shows during initial sign in
     try {
       const res = await fetch(`${API}/auth/login`, { 
         method: "POST", 
@@ -757,11 +752,20 @@ function App() {
       }
   };
 
+  // 🟢 SMART CHECK TO REQUIRE INSTALLATION BEFORE ENABLING NOTIFICATIONS
   const setupPushNotifications = async () => {
+      const isAppInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true || document.referrer.includes('android-app://');
+      
+      if (!isAppInstalled) {
+          alert("📱 Please Install the App First!\n\nYou must add this app to your Home Screen before you can enable smart notifications.");
+          return;
+      }
+
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
           alert("Push notifications are not supported by your browser.");
           return;
       }
+      
       setIsProcessingPush(true);
       try {
           const permission = await Notification.requestPermission();
@@ -844,10 +848,14 @@ function App() {
       setIsProcessingPush(false);
   };
 
-  const fetchAllData = useCallback(async () => {
-    if (!token || token === "null" || isMaintenanceMode || isAppLocked) { setIsAppLoading(false); return; }
+  // 🟢 FETCH FUNCTION (USES SILENT LOADING FOR RE-FETCHES TO PREVENT ANNOYING COIN POPUPS)
+  const fetchAllData = useCallback(async (showLoader = false) => {
+    if (!token || token === "null" || isMaintenanceMode || isAppLocked) { 
+        if (showLoader) setIsAppLoading(false); 
+        return; 
+    }
     
-    setIsAppLoading(true);
+    if (showLoader) setIsAppLoading(true);
     try {
       const headers = { Authorization: `Bearer ${token}` };
       
@@ -860,14 +868,14 @@ function App() {
 
       if (!tRes.ok && tRes.status >= 500) {
           setServerOffline(true);
-          setIsAppLoading(false);
+          if (showLoader) setIsAppLoading(false);
           return;
       }
 
       if (tRes.status === 401 || tRes.status === 403) { 
         const newToken = await refreshAuthToken();
-        if (newToken) fetchAllData(); 
-        else setIsAppLoading(false);
+        if (newToken) fetchAllData(showLoader); 
+        else if (showLoader) setIsAppLoading(false);
         return; 
       }
 
@@ -910,12 +918,13 @@ function App() {
         setServerOffline(true); 
     } 
     finally { 
-        setIsAppLoading(false); 
+        if (showLoader) setIsAppLoading(false); 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, refreshAuthToken, isAppLocked, userProfile.preferred_language]);
 
-  useEffect(() => { fetchAllData(); }, [fetchAllData]);
+  // Initial load uses true to show the wake-up coin.
+  useEffect(() => { fetchAllData(true); }, [fetchAllData]);
 
   const downloadWhitePaper = async () => {
     if (transactions.length === 0) return alert("No transactions to download!");
@@ -1101,7 +1110,9 @@ function App() {
       if (res.ok) { 
         setTxSuccessMsg(`✅ Saved successfully: ₹${amount} as ${type}`);
         setTimeout(() => setTxSuccessMsg(""), 4000); 
-        setTitle(""); setAmount(""); setEditingId(null); setCategory("Other"); setDate(new Date().toISOString().split('T')[0]); fetchAllData(); 
+        setTitle(""); setAmount(""); setEditingId(null); setCategory("Other"); setDate(new Date().toISOString().split('T')[0]); 
+        // Background silent fetch
+        fetchAllData(false); 
       } else { 
         const errData = await res.json(); 
         alert("Error: " + errData.message); 
@@ -1128,7 +1139,8 @@ function App() {
           return;
       }
       
-      if (res.ok) fetchAllData(); 
+      // Background silent fetch
+      if (res.ok) fetchAllData(false); 
     } catch (err) { alert(DEVICE_ERROR_MSG); }
   };
 
@@ -1147,7 +1159,7 @@ function App() {
     } catch (err) { alert(DEVICE_ERROR_MSG); }
   };
 
-  const clearFilters = () => { setFilterType("All"); setFilterCategory("All"); setSearchQuery(""); setFilterStartDate(""); setFilterEndDate(""); fetchAllData(); };
+  const clearFilters = () => { setFilterType("All"); setFilterCategory("All"); setSearchQuery(""); setFilterStartDate(""); setFilterEndDate(""); fetchAllData(false); };
 
   const calculateInterest = () => {
     const { principal, startDate, endDate, interestType, rate, shareLang } = interestData;
@@ -1257,10 +1269,10 @@ function App() {
     }
   }
 
-  // 🟢 EARLY RENDER CHECKS
+  // 🟢 EARLY RENDER CHECKS USING THE NEW COIN COMPONENT
   if (isMaintenanceMode) return <MaintenanceScreen />;
   if (isAdminView) return <AdminCommandCenter token={token} onBack={() => setIsAdminView(false)} />;
-  if (token && serverOffline) return <ServerOfflineScreen onRetry={() => { setIsAppLoading(true); setServerOffline(false); fetchAllData(); }} />;
+  if (token && serverOffline) return <ServerOfflineScreen onRetry={() => { fetchAllData(true); }} />;
 
   // 🟢 FULL PAGE LOADER FOR INITIAL LOGIN / SERVER WAKE-UP
   if (isAppLoading && !token) return ( 
@@ -1295,7 +1307,7 @@ function App() {
         {authMode === "login" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             
-            {/* 🟢 SILENT SECURITY LOGOUT NOTIFICATION */}
+            {/* 🟢 FRIENDLY LOGOUT NOTIFICATION */}
             {sessionMsg && (
                 <div style={{ padding: "12px", background: "#eff6ff", color: "#1e40af", border: "1px solid #93c5fd", borderRadius: "8px", fontSize: "13px", fontWeight: "bold", textAlign: "center", lineHeight: "1.4" }}>
                     {sessionMsg}
@@ -1358,7 +1370,7 @@ function App() {
     <div>
       <style>{globalStyles}</style>
 
-      {/* 🟢 NEW BACKGROUND EXPIRY WARNING BANNER */}
+      {/* 🟢 BACKGROUND EXPIRY WARNING BANNER */}
       {expiryWarning && (
           <div style={{ position: "fixed", top: "0", left: "0", width: "100%", background: "#ef4444", color: "white", textAlign: "center", padding: "10px", fontSize: "14px", fontWeight: "bold", zIndex: 99999, boxShadow: "0 4px 10px rgba(0,0,0,0.2)", animation: "fade-in 0.3s" }}>
               {expiryWarning}
@@ -1385,6 +1397,13 @@ function App() {
                       Close Security Panel
                   </button>
               </div>
+          </div>
+      )}
+
+      {/* 🟢 ONLY SHOW THIS WHEN INITIALLY LOADING/WAKING SERVER AFTER LOGIN */}
+      {isAppLoading && token && (
+          <div style={{ position: "fixed", top: "0", left: "0", width: "100vw", height: "100vh", background: "rgba(15, 23, 42, 0.98)", backdropFilter: "blur(10px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
+            <GiantSpinningCoin frontTitle1="SUBHAMS" frontTitle2="PMMS" frontSubtitle="LOADING" backIcon="₹" backSubtitle="Please Wait" />
           </div>
       )}
 
