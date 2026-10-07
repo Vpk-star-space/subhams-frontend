@@ -1321,7 +1321,19 @@ function App() {
             <p style={{ fontSize: "14px", margin: "5px 0" }}>Don&apos;t have an account? <span style={{ color: "#3b82f6", cursor: "pointer", fontWeight: "bold" }} onClick={() => setAuthMode("register")}>Create one here</span></p>
             <div style={{ margin: "10px 0", color: "#cbd5e1", fontSize: "14px" }}>────── OR ──────</div>
             <div style={{ display: "flex", justifyContent: "center" }}><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => alert(DEVICE_ERROR_MSG)} /></div>
+            <div style={{ textAlign: 'center', marginTop: '15px', fontSize: '12px', color: '#64748b' }}>
+  By continuing, you agree to the Subhams Networks <br/>
+  <a 
+    href="https://subhamsnetworks.in/legal" 
+    target="_blank" 
+    rel="noopener noreferrer" 
+    style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 'bold' }}
+  >
+    Privacy Policy & Terms of Service
+  </a>
+</div>
           </div>
+          
         )}
         {authMode === "register" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
@@ -1734,6 +1746,19 @@ function App() {
             </button>
         </div>
       </footer>
+      <footer style={{ padding: '20px', textAlign: 'center', borderTop: '1px solid #e2e8f0', marginTop: 'auto' }}>
+  <p style={{ fontSize: '13px', color: '#94a3b8', margin: 0 }}>
+    © 2026 Subhams Networks. 
+    <a 
+      href="https://subhamsnetworks.in/legal" 
+      target="_blank" 
+      rel="noopener noreferrer" 
+      style={{ color: '#64748b', textDecoration: 'underline', marginLeft: '10px' }}
+    >
+      Legal & Privacy
+    </a>
+  </p>
+</footer>
 
       <div style={{ textAlign: 'center', marginTop: '40px', paddingBottom: '25px', position: 'relative', zIndex: 1 }}>
         <style>{`@keyframes premium-shine { 0% { background-position: -200% center; } 100% { background-position: 200% center; } } @keyframes float-sparkle { 0%, 100% { transform: translateY(0px) scale(0.8); opacity: 0.4; } 50% { transform: translateY(-4px) scale(1.2); opacity: 1; filter: drop-shadow(0 0 6px #fbbf24); } } @keyframes line-breathe { 0%, 100% { width: 30px; opacity: 0.3; } 50% { width: 60px; opacity: 0.8; box-shadow: 0 0 10px #3b82f6; } } .subhams-brand-text { background: linear-gradient(90deg, #3b82f6, #a855f7, #ec4899, #3b82f6); background-size: 200% auto; color: transparent; -webkit-background-clip: text; background-clip: text; animation: premium-shine 3.5s linear infinite; font-weight: 900; font-size: 14px; letter-spacing: 2px; }`}</style>
