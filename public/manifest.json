@@ -1,21 +1,35 @@
 {
+  "id": "/",
   "short_name": "PMMS",
   "name": "Subhams PMMS",
   "icons": [
     {
-      "src": "/pmms-192.png",
+      "src": "/pmms-192.png?v=2",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/pmms-512.png",
+      "src": "/pmms-512.png?v=2",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/pmms-192.png?v=2",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/pmms-512.png?v=2",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "theme_color": "#0a0a0a",
   "background_color": "#0a0a0a"

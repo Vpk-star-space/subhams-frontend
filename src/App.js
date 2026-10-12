@@ -4,7 +4,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas"; 
 import { Fingerprint, Calculator, Lock, Mail, ExternalLink, Code, User, Bell, BellOff, BellRing, Check, X, Share2, Power, Info } from 'lucide-react'; 
-import InstallPopup from './components/InstallPopup';
+
 import AdminCommandCenter from './components/AdminCommandCenter';
 
 const isMaintenanceMode = false; 
@@ -1374,7 +1374,7 @@ function App() {
           </div>
         )}
       </div>
-      <InstallPopup />
+     
     </div>
   );
 
@@ -1765,7 +1765,7 @@ function App() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><span style={{ animation: 'float-sparkle 2s ease-in-out infinite', fontSize: '13px' }}>✨</span><p style={{ fontSize: '10px', color: '#64748b', fontWeight: '800', margin: 0, letterSpacing: '1.5px' }}>POWERED BY <span className="subhams-brand-text">SUBHAMS</span></p><span style={{ animation: 'float-sparkle 2s ease-in-out infinite 1s', fontSize: '13px' }}>✨</span></div>
         <div style={{ height: '3px', background: 'linear-gradient(90deg, transparent, #3b82f6, #a855f7, transparent)', margin: '8px auto 0 auto', borderRadius: '10px', animation: 'line-breathe 3s ease-in-out infinite' }}></div>
       </div>
-      <InstallPopup />
+  
     </div>
   );
 }

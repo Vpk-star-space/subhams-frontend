@@ -1,14 +1,34 @@
 /* eslint-disable no-restricted-globals */
 
-self.addEventListener('install', (e) => {
+self.addEventListener('install', () => {
   console.log('[Service Worker] Installed properly');
-  self.skipWaiting(); 
+  self.skipWaiting();
 });
 
+// 🌟 NEW: take control of open pages right away
+self.addEventListener('activate', (e) => {
+  e.waitUntil(self.clients.claim());
+});
+
+// 🌟 FIXED: the old handler returned nothing when offline, which causes errors.
+// Now it always returns a real Response, and skips requests it should not touch.
 self.addEventListener('fetch', (e) => {
+  // Let API calls (POST/PUT/DELETE) go straight through
+  if (e.request.method !== 'GET') return;
+
+  // Let other sites (Google login, backend API, fonts) go straight through
+  if (new URL(e.request.url).origin !== self.location.origin) return;
+
   e.respondWith(
     fetch(e.request).catch(() => {
       console.log('[Service Worker] Network request failed (Offline)');
+      if (e.request.mode === 'navigate') {
+        return new Response(
+          '<h2 style="font-family:sans-serif;text-align:center;margin-top:40px">You are offline. Please check your connection.</h2>',
+          { status: 200, headers: { 'Content-Type': 'text/html' } }
+        );
+      }
+      return new Response('', { status: 503, statusText: 'Offline' });
     })
   );
 });
